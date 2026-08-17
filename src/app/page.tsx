@@ -46,6 +46,7 @@ export default function HomePage() {
   const [typeOn, setTypeOn] = useState<Record<ScheduleType, boolean>>({
     WORK: true,
     LEAVE: true,
+    ANNUAL: true,
     HALF: true,
     TRIP: true,
     FIELD: true,
@@ -405,6 +406,20 @@ function DayDetail({
   onEditSchedule: (s: Schedule) => void;
   onEditReport: (r: Report) => void;
 }) {
+  // 휴가/연차/반차로 휴무인 직원 집계
+  const OFF_TYPES = ["LEAVE", "ANNUAL", "HALF"] as ScheduleType[];
+  const offDuty = Array.from(
+    new Map(
+      schedules
+        .filter((s) => (OFF_TYPES as string[]).includes(s.type))
+        .map((s) => {
+          const emp = employees.find((e) => e.id === s.employee_id);
+          return [s.employee_id, { emp, type: s.type }] as const;
+        })
+        .filter((v): v is [string, { emp: Employee; type: ScheduleType }] => !!v[1].emp)
+    ).values()
+  );
+
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -425,6 +440,33 @@ function DayDetail({
           </button>
         </div>
       </div>
+
+      {offDuty.length > 0 && (
+        <div className="mb-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+          <div className="mb-1.5 text-xs font-semibold text-zinc-500">
+            🚫 휴무자 ({offDuty.length})
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {offDuty.map(({ emp, type }) => (
+              <span
+                key={emp.id}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white px-2 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-200"
+              >
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: emp.color }}
+                />
+                {emp.name}
+                <span
+                  className={`rounded px-1 py-0.5 text-[10px] font-semibold ${SCHEDULE_TYPE_MAP[type].badge}`}
+                >
+                  {SCHEDULE_TYPE_MAP[type].label}
+                </span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {schedules.length === 0 && reports.length === 0 ? (
         <p className="text-sm text-zinc-400">등록된 일정과 보고가 없습니다.</p>

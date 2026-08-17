@@ -8,6 +8,7 @@ export const SCHEDULE_TYPES: {
 }[] = [
   { value: "WORK", label: "출근/근무", badge: "bg-sky-100 text-sky-700" },
   { value: "LEAVE", label: "휴가", badge: "bg-rose-100 text-rose-700" },
+  { value: "ANNUAL", label: "연차", badge: "bg-fuchsia-100 text-fuchsia-700" },
   { value: "HALF", label: "반차", badge: "bg-orange-100 text-orange-700" },
   { value: "TRIP", label: "출장", badge: "bg-violet-100 text-violet-700" },
   { value: "FIELD", label: "외근", badge: "bg-amber-100 text-amber-700" },

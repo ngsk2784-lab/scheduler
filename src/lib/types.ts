@@ -3,6 +3,7 @@
 export type ScheduleType =
   | "WORK" // 출근/근무
   | "LEAVE" // 휴가
+  | "ANNUAL" // 연차
   | "HALF" // 반차
   | "TRIP" // 출장
   | "FIELD" // 외근

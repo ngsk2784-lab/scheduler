@@ -36,11 +36,20 @@ export function CalendarView({
         headerToolbar={{
           left: "prev,next today",
           center: "title",
-          right: "dayGridMonth,timeGridWeek,listWeek",
+          right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
         }}
         height="auto"
         dayMaxEvents={5}
         nowIndicator
+        slotMinTime="06:00:00"
+        slotMaxTime="23:00:00"
+        slotDuration="01:00:00"
+        eventTimeFormat={{
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+          meridiem: false,
+        }}
         events={events}
         dateClick={(arg) => onDateClick(arg.date)}
         eventClick={(arg: EventClickArg) => onEventClick(arg)}

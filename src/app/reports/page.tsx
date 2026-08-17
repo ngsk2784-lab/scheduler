@@ -7,6 +7,7 @@ import type { Report } from "@/lib/types";
 import { REPORT_SOURCES } from "@/lib/constants";
 import { ReportModal } from "@/components/ReportModal";
 import { Spinner, inputCls } from "@/components/ui";
+import { KakaoBulkImport, type BulkReport } from "@/components/KakaoBulkImport";
 import type { ReportInput } from "@/lib/supabase";
 
 export default function ReportsPage() {
@@ -15,6 +16,7 @@ export default function ReportsPage() {
   const [modal, setModal] = useState<{ open: boolean; report: Report | null }>(
     { open: false, report: null }
   );
+  const [kakaoOpen, setKakaoOpen] = useState(false);
   const [empFilter, setEmpFilter] = useState("");
   const [srcFilter, setSrcFilter] = useState("");
   const [monthFilter, setMonthFilter] = useState("");
@@ -64,6 +66,12 @@ export default function ReportsPage() {
           >
             ← 달력으로
           </Link>
+          <button
+            onClick={() => setKakaoOpen(true)}
+            className="rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm font-semibold text-yellow-800 shadow-sm transition-colors hover:bg-yellow-100"
+          >
+            💬 단톡방 자동 등록
+          </button>
           <button
             onClick={() => setModal({ open: true, report: null })}
             className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600"
@@ -183,6 +191,26 @@ export default function ReportsPage() {
         report={modal.report}
         onSave={(input: ReportInput, id?: string) => saveReport(input, id)}
         onDelete={(id: string) => removeReport(id)}
+      />
+
+      <KakaoBulkImport
+        open={kakaoOpen}
+        onClose={() => setKakaoOpen(false)}
+        employees={employees}
+        onRegister={async (reports: BulkReport[]) => {
+          for (const r of reports) {
+            await saveReport(
+              {
+                employee_id: r.employeeId,
+                report_date: r.date,
+                source: "kakao",
+                summary: r.summary,
+                content: r.content,
+              },
+              undefined
+            );
+          }
+        }}
       />
     </div>
   );
