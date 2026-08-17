@@ -406,19 +406,48 @@ function DayDetail({
   onEditSchedule: (s: Schedule) => void;
   onEditReport: (r: Report) => void;
 }) {
-  // 휴가/연차/반차로 휴무인 직원 집계
-  const OFF_TYPES = ["LEAVE", "ANNUAL", "HALF"] as ScheduleType[];
-  const offDuty = Array.from(
-    new Map(
-      schedules
-        .filter((s) => (OFF_TYPES as string[]).includes(s.type))
-        .map((s) => {
-          const emp = employees.find((e) => e.id === s.employee_id);
-          return [s.employee_id, { emp, type: s.type }] as const;
-        })
-        .filter((v): v is [string, { emp: Employee; type: ScheduleType }] => !!v[1].emp)
-    ).values()
-  );
+  // 직원별 그날의 상태 (유형 우선순위: 휴가/연차/반차 > 출장/외근/재택 > 사무실)
+  const STAFF_STATUS: Record<
+    ScheduleType,
+    { label: string; badge: string; icon: string }
+  > = {
+    WORK: { label: "사무실", badge: "bg-sky-100 text-sky-700", icon: "🏢" },
+    LEAVE: { label: "휴가", badge: "bg-rose-100 text-rose-700", icon: "🏖️" },
+    ANNUAL: { label: "연차", badge: "bg-fuchsia-100 text-fuchsia-700", icon: "🌴" },
+    HALF: { label: "반차", badge: "bg-orange-100 text-orange-700", icon: "🌗" },
+    TRIP: { label: "출장", badge: "bg-violet-100 text-violet-700", icon: "✈️" },
+    FIELD: { label: "외근", badge: "bg-amber-100 text-amber-700", icon: "🚗" },
+    REMOTE: { label: "재택", badge: "bg-green-100 text-green-700", icon: "🏠" },
+    OTHER: { label: "기타", badge: "bg-gray-100 text-gray-600", icon: "📌" },
+  };
+  const STATUS_PRIORITY: ScheduleType[] = [
+    "LEAVE",
+    "ANNUAL",
+    "HALF",
+    "TRIP",
+    "FIELD",
+    "REMOTE",
+    "WORK",
+    "OTHER",
+  ];
+  const OFF_SET = ["LEAVE", "ANNUAL", "HALF"];
+  const staff = employees
+    .filter((e) => e.is_active)
+    .map((emp) => {
+      let type: ScheduleType = "WORK";
+      for (const p of STATUS_PRIORITY) {
+        if (schedules.some((s) => s.employee_id === emp.id && s.type === p)) {
+          type = p;
+          break;
+        }
+      }
+      return { emp, type };
+    })
+    .sort((a, b) => {
+      const oa = OFF_SET.includes(a.type) ? 1 : 0;
+      const ob = OFF_SET.includes(b.type) ? 1 : 0;
+      return ob - oa || a.emp.name.localeCompare(b.emp.name, "ko");
+    });
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -441,29 +470,39 @@ function DayDetail({
         </div>
       </div>
 
-      {offDuty.length > 0 && (
-        <div className="mb-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+      {staff.length > 0 && (
+        <div className="mb-3 rounded-xl border border-zinc-200 bg-white p-3">
           <div className="mb-1.5 text-xs font-semibold text-zinc-500">
-            🚫 휴무자 ({offDuty.length})
+            👥 직원 상태 ({staff.length})
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {offDuty.map(({ emp, type }) => (
-              <span
-                key={emp.id}
-                className="inline-flex items-center gap-1.5 rounded-full bg-white px-2 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-200"
-              >
+            {staff.map(({ emp, type }) => {
+              const st = STAFF_STATUS[type];
+              const off = OFF_SET.includes(type);
+              return (
                 <span
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: emp.color }}
-                />
-                {emp.name}
-                <span
-                  className={`rounded px-1 py-0.5 text-[10px] font-semibold ${SCHEDULE_TYPE_MAP[type].badge}`}
+                  key={emp.id}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium ring-1 ${
+                    off
+                      ? "bg-zinc-50 text-zinc-400 ring-zinc-200"
+                      : "bg-white text-zinc-700 ring-zinc-200"
+                  }`}
                 >
-                  {SCHEDULE_TYPE_MAP[type].label}
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: emp.color }}
+                  />
+                  <span className="whitespace-nowrap">
+                    {st.icon} {emp.name}
+                  </span>
+                  <span
+                    className={`rounded px-1 py-0.5 text-[10px] font-semibold ${st.badge}`}
+                  >
+                    {st.label}
+                  </span>
                 </span>
-              </span>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
