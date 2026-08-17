@@ -223,11 +223,15 @@ export function EmployeeModal({
             <input
               type="number"
               min={0}
+              step={0.5}
               className={inputCls}
               value={annualAllowance}
               onChange={(e) => setAnnualAllowance(e.target.value)}
-              placeholder="예: 15"
+              placeholder="예: 15 또는 15.5"
             />
+            <span className="mt-1 block text-[11px] text-zinc-400">
+              반차(0.5일) 포함 소수 입력 가능
+            </span>
           </Field>
 
           <Field label="연락처 (선택)">

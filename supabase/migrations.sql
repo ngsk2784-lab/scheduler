@@ -6,9 +6,13 @@
 
 -- employees: 조직구조 + 연차잔여 필드
 alter table if exists public.employees
-  add column if not exists branch         text,     -- 지점/사업장
-  add column if not exists team           text,     -- 팀/부서그룹
-  add column if not exists annual_allowance int;    -- 연간 연차 부여일수
+  add column if not exists branch         text,          -- 지점/사업장
+  add column if not exists team           text,          -- 팀/부서그룹
+  add column if not exists annual_allowance double precision; -- 연간 연차 부여일수 (소수 0.5 단위 허용)
+
+-- 기존에 int 로 만들어진 컬럼이면 실수로 교체 (반차 0.5 차감 대응)
+alter table if exists public.employees
+  alter column annual_allowance type double precision using annual_allowance::double precision;
 
 -- reports: 태그 배열
 alter table if exists public.reports

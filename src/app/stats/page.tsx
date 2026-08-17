@@ -48,12 +48,14 @@ export default function StatsPage() {
         const my = monthSchedules.filter((s) => s.employee_id === emp.id);
         const counts: Record<string, number> = {};
         for (const s of my) counts[s.type] = (counts[s.type] ?? 0) + 1;
-        const usedAnnual = schedules.filter(
-          (s) =>
-            s.employee_id === emp.id &&
-            s.type === "ANNUAL" &&
-            new Date(s.start_at).getFullYear() === year
-        ).length;
+        // 연차 사용일수 (연차 1일, 오전/오후 반차 각 0.5일 차감)
+        let usedAnnual = 0;
+        for (const s of schedules) {
+          if (s.employee_id !== emp.id) continue;
+          if (new Date(s.start_at).getFullYear() !== year) continue;
+          if (s.type === "ANNUAL") usedAnnual += 1;
+          else if (s.type === "HALF_AM" || s.type === "HALF_PM") usedAnnual += 0.5;
+        }
         return {
           emp,
           counts,
@@ -172,7 +174,9 @@ export default function StatsPage() {
                   <td className="px-3 py-2">{c.REMOTE ?? 0}</td>
                   <td className="px-3 py-2">{p.reports}</td>
                   <td className="px-3 py-2">
-                    {p.allowance == null ? `${p.usedAnnual}일 (부여 미설정)` : `${p.usedAnnual}일 / ${remain}일`}
+                    {p.allowance == null
+                      ? `${fmtDay(p.usedAnnual)}일 (부여 미설정)`
+                      : `${fmtDay(p.usedAnnual)}일 / ${fmtDay(remain)}일`}
                   </td>
                 </tr>
               );
@@ -182,6 +186,11 @@ export default function StatsPage() {
       </section>
     </div>
   );
+}
+
+function fmtDay(n: number | null | undefined): string {
+  if (n == null) return "0";
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
 function StatBox({ label, value, accent }: { label: string; value: number; accent: string }) {
