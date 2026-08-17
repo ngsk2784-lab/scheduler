@@ -1,9 +1,0 @@
-
-> web@0.1.0 build
-> next build --webpack
-
-▲ Next.js 16.3.1 (webpack)
-✓ Running next.config.ts took 115ms
-  Skipping creating a lockfile at C:\Users\MSI\Desktop\scheduler\web\.next\lock because we're using WASM bindings
-
-  Creating an optimized production build ...
