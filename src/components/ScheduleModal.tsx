@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import type { Employee, Schedule, ScheduleType } from "@/lib/types";
+import type { Employee, Schedule, ScheduleType, ConfirmationResponse } from "@/lib/types";
 import { SCHEDULE_TYPES, toDateOnly } from "@/lib/constants";
 import type { ScheduleInput } from "@/lib/supabase";
+import * as api from "@/lib/supabase";
 import {
   Modal,
   Field,
@@ -44,6 +45,47 @@ export function ScheduleModal({
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirms, setConfirms] = useState<Record<string, ConfirmationResponse>>({});
+  const [confirmMsg, setConfirmMsg] = useState<string | null>(null);
+
+  // 편집 모드일 때 이 일정의 참석 확인 로드
+  useEffect(() => {
+    if (!open || !schedule) return;
+    let alive = true;
+    api
+      .fetchConfirmations()
+      .then((list) => {
+        if (!alive) return;
+        const m: Record<string, ConfirmationResponse> = {};
+        list
+          .filter((c) => c.schedule_id === schedule.id)
+          .forEach((c) => (m[c.employee_id] = c.response));
+        setConfirms(m);
+      })
+      .catch(() => setConfirmMsg("확인 정보를 불러오지 못했습니다."));
+    return () => {
+      alive = false;
+    };
+  }, [open, schedule]);
+
+  async function saveConfirmations() {
+    if (!schedule) return;
+    setConfirmMsg(null);
+    try {
+      const active = employees.filter((e) => e.is_active);
+      for (const e of active) {
+        await api.saveConfirmation({
+          schedule_id: schedule.id,
+          employee_id: e.id,
+          response: confirms[e.id] ?? "pending",
+        });
+      }
+      setConfirmMsg("✅ 참석 확인을 저장했습니다.");
+    } catch (err) {
+      console.error(err);
+      setConfirmMsg("저장에 실패했습니다.");
+    }
+  }
 
   // 열릴 때마다 폼 초기화
   useEffect(() => {
@@ -273,6 +315,49 @@ export function ScheduleModal({
           </Field>
 
           {msg && <p className="text-sm font-medium text-rose-600">{msg}</p>}
+          {schedule && (
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-sm font-semibold text-zinc-700">
+                  🙋 참석 확인
+                </span>
+                <button
+                  type="button"
+                  onClick={saveConfirmations}
+                  className="rounded-lg bg-violet-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-violet-700"
+                >
+                  확인 저장
+                </button>
+              </div>
+              <div className="space-y-1">
+                {employees
+                  .filter((e) => e.is_active)
+                  .map((e) => (
+                    <label key={e.id} className="flex items-center gap-2 text-xs text-zinc-600">
+                      <span className="w-16 truncate">{e.name}</span>
+                      <select
+                        className="flex-1 rounded border border-zinc-300 bg-white px-1.5 py-1"
+                        value={confirms[e.id] ?? "pending"}
+                        onChange={(ev) =>
+                          setConfirms((prev) => ({
+                            ...prev,
+                            [e.id]: ev.target.value as ConfirmationResponse,
+                          }))
+                        }
+                      >
+                        <option value="pending">미정</option>
+                        <option value="yes">✅ 참석</option>
+                        <option value="maybe">🤔 보류</option>
+                        <option value="no">❌ 불참</option>
+                      </select>
+                    </label>
+                  ))}
+              </div>
+              {confirmMsg && (
+                <p className="mt-1 text-xs font-medium text-violet-700">{confirmMsg}</p>
+              )}
+            </div>
+          )}
         </div>
       </form>
     </Modal>

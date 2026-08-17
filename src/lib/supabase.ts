@@ -1,9 +1,13 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
+  Attendance,
+  AttendanceStatus,
+  ConfirmationResponse,
   Employee,
   Report,
   ReportSource,
   Schedule,
+  ScheduleConfirmation,
   ScheduleType,
 } from "./types";
 
@@ -32,6 +36,9 @@ export interface EmployeeInput {
   department?: string | null;
   phone?: string | null;
   is_active?: boolean;
+  branch?: string | null;
+  team?: string | null;
+  annual_allowance?: number | null;
 }
 
 export interface ScheduleInput {
@@ -50,6 +57,22 @@ export interface ReportInput {
   source: ReportSource;
   summary?: string | null;
   content: string;
+  tags?: string[];
+}
+
+export interface AttendanceInput {
+  employee_id: string;
+  att_date: string;
+  status: AttendanceStatus;
+  time_in?: string | null;
+  time_out?: string | null;
+  note?: string | null;
+}
+
+export interface ConfirmationInput {
+  schedule_id: string;
+  employee_id: string;
+  response: ConfirmationResponse;
 }
 
 // ---- 직원 ----
@@ -136,3 +159,49 @@ export async function deleteReport(id: string) {
   const { error } = await getClient().from("reports").delete().eq("id", id);
   if (error) throw error;
 }
+
+// ---- 출근부 ----
+export async function fetchAttendance(month?: string): Promise<Attendance[]> {
+  let q = getClient().from("attendance").select("*").order("att_date", { ascending: false });
+  if (month) q = q.gte("att_date", `${month}-01`).lte("att_date", `${month}-31`);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []) as Attendance[];
+}
+
+export async function saveAttendance(input: AttendanceInput, id?: string) {
+  if (id) {
+    const { error } = await getClient()
+      .from("attendance")
+      .update(input)
+      .eq("id", id);
+    if (error) throw error;
+  } else {
+    const { error } = await getClient()
+      .from("attendance")
+      .upsert(input, { onConflict: "employee_id,att_date" });
+    if (error) throw error;
+  }
+}
+
+export async function deleteAttendance(id: string) {
+  const { error } = await getClient().from("attendance").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ---- 일정 확인/응답 ----
+export async function fetchConfirmations(): Promise<ScheduleConfirmation[]> {
+  const { data, error } = await getClient()
+    .from("schedule_confirmations")
+    .select("*");
+  if (error) throw error;
+  return (data ?? []) as ScheduleConfirmation[];
+}
+
+export async function saveConfirmation(input: ConfirmationInput) {
+  const { error } = await getClient()
+    .from("schedule_confirmations")
+    .upsert(input, { onConflict: "schedule_id,employee_id" });
+  if (error) throw error;
+}
+

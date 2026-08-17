@@ -8,6 +8,7 @@ import { REPORT_SOURCES } from "@/lib/constants";
 import { ReportModal } from "@/components/ReportModal";
 import { Spinner, inputCls } from "@/components/ui";
 import type { ReportInput } from "@/lib/supabase";
+import { toCsv, downloadFile } from "@/lib/exportCsv";
 
 export default function ReportsPage() {
   const { employees, reports, loading, error, saveReport, removeReport } =
@@ -18,14 +19,34 @@ export default function ReportsPage() {
   const [empFilter, setEmpFilter] = useState("");
   const [srcFilter, setSrcFilter] = useState("");
   const [monthFilter, setMonthFilter] = useState("");
+  const [q, setQ] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
+
+  const allTags = useMemo(() => {
+    const s = new Set<string>();
+    reports.forEach((r) => (r.tags ?? []).forEach((t) => s.add(t)));
+    return Array.from(s).sort();
+  }, [reports]);
+
+  const empName = (id: string) => employees.find((e) => e.id === id)?.name ?? "?";
+  const empColor = (id: string) => employees.find((e) => e.id === id)?.color ?? "#3b82f6";
 
   const filtered = useMemo(() => {
+    const kw = q.trim().toLowerCase();
     return reports
       .filter((r) => !empFilter || r.employee_id === empFilter)
       .filter((r) => !srcFilter || r.source === srcFilter)
       .filter((r) => !monthFilter || r.report_date.startsWith(monthFilter))
+      .filter((r) => !tagFilter || (r.tags ?? []).includes(tagFilter))
+      .filter((r) =>
+        !kw ||
+        empName(r.employee_id).toLowerCase().includes(kw) ||
+        (r.summary ?? "").toLowerCase().includes(kw) ||
+        r.content.toLowerCase().includes(kw) ||
+        (r.tags ?? []).some((t) => t.toLowerCase().includes(kw))
+      )
       .sort((a, b) => (a.report_date < b.report_date ? 1 : -1));
-  }, [reports, empFilter, srcFilter, monthFilter]);
+  }, [reports, empFilter, srcFilter, monthFilter, tagFilter, q, empName]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Report[]>();
@@ -37,10 +58,15 @@ export default function ReportsPage() {
     return Array.from(map.entries());
   }, [filtered]);
 
-  const empName = (id: string) =>
-    employees.find((e) => e.id === id)?.name ?? "?";
-  const empColor = (id: string) =>
-    employees.find((e) => e.id === id)?.color ?? "#3b82f6";
+  function exportCsv() {
+    const rows: (string | number | null)[][] = [
+      ["날짜", "직원", "원천", "요약", "내용", "태그"],
+    ];
+    filtered.forEach((r) =>
+      rows.push([r.report_date, empName(r.employee_id), r.source, r.summary, r.content, (r.tags ?? []).join(";")])
+    );
+    downloadFile(`보고내역_${new Date().toISOString().slice(0, 10)}.csv`, toCsv(rows));
+  }
 
   return (
     <div className="space-y-4">
@@ -65,6 +91,12 @@ export default function ReportsPage() {
             ← 달력으로
           </Link>
           <button
+            onClick={exportCsv}
+            className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
+          >
+            ⬇ 내보내기
+          </button>
+          <button
             onClick={() => setModal({ open: true, report: null })}
             className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600"
           >
@@ -73,7 +105,14 @@ export default function ReportsPage() {
         </div>
       </div>
       {/* 필터 */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+        <input
+          type="search"
+          className={`${inputCls} col-span-2`}
+          placeholder="🔎 검색 (직원/내용/태그)"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
         <select
           className={inputCls}
           value={empFilter}
@@ -95,6 +134,18 @@ export default function ReportsPage() {
           <option value="manual">✍️ 수기</option>
           <option value="kakao">💬 카톡 단톡방</option>
         </select>
+        <select
+          className={inputCls}
+          value={tagFilter}
+          onChange={(e) => setTagFilter(e.target.value)}
+        >
+          <option value="">전체 태그</option>
+          {allTags.map((t) => (
+            <option key={t} value={t}>
+              #{t}
+            </option>
+          ))}
+        </select>
         <input
           type="month"
           className={inputCls}
@@ -107,6 +158,8 @@ export default function ReportsPage() {
             setEmpFilter("");
             setSrcFilter("");
             setMonthFilter("");
+            setQ("");
+            setTagFilter("");
           }}
         >
           필터 초기화
@@ -162,6 +215,13 @@ export default function ReportsPage() {
                               · {r.summary}
                             </span>
                           )}
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {(r.tags ?? []).map((t) => (
+                            <span key={t} className="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-600">
+                              #{t}
+                            </span>
+                          ))}
                         </div>
                         <p className="mt-1 whitespace-pre-line text-sm text-zinc-600">
                           {r.content}

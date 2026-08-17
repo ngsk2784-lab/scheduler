@@ -15,6 +15,7 @@ import { CalendarView } from "@/components/CalendarView";
 import { ScheduleModal } from "@/components/ScheduleModal";
 import { ReportModal } from "@/components/ReportModal";
 import { Spinner } from "@/components/ui";
+import { toCsv, downloadFile, buildIcs } from "@/lib/exportCsv";
 
 interface ModalState {
   open: boolean;
@@ -231,6 +232,41 @@ export default function HomePage() {
     setEmpOn(Object.fromEntries(employees.map((e) => [e.id, on])));
   }
 
+  const nameOf = useCallback(
+    (id: string) => employees.find((e) => e.id === id)?.name ?? "?",
+    [employees]
+  );
+
+  function exportSchedulesCsv() {
+    const rows: (string | number | null)[][] = [
+      ["직원", "제목", "유형", "시작", "종료", "종일", "메모"],
+    ];
+    schedules.forEach((s) =>
+      rows.push([
+        nameOf(s.employee_id),
+        s.title,
+        s.type,
+        new Date(s.start_at).toLocaleString("ko-KR"),
+        s.all_day ? "종일" : new Date(s.end_at).toLocaleString("ko-KR"),
+        s.all_day ? "Y" : "N",
+        s.description ?? "",
+      ])
+    );
+    downloadFile("스케줄.csv", toCsv(rows));
+  }
+
+  function exportIcs() {
+    const evs = schedules
+      .filter((s) => !s.all_day)
+      .map((s) => ({
+        title: `${s.title} (${nameOf(s.employee_id)})`,
+        start: new Date(s.start_at),
+        end: new Date(s.end_at),
+        desc: s.description ?? undefined,
+      }));
+    downloadFile("스케줄.ics", buildIcs(evs, "회사 스케줄"), "text/calendar;charset=utf-8");
+  }
+
   return (
     <div className="space-y-4">
       {error && (
@@ -252,6 +288,12 @@ export default function HomePage() {
           </Link>
           <button onClick={() => setReportModal({ open: true, report: null, defaultDate: new Date() })} className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 transition-colors hover:bg-amber-100">
             ＋ 📌 보고 등록
+          </button>
+          <button onClick={exportSchedulesCsv} className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-100">
+            ⬇ CSV
+          </button>
+          <button onClick={exportIcs} className="rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-2 text-sm font-semibold text-cyan-700 transition-colors hover:bg-cyan-100" title="구글/아이캘린더 구독용">
+            🗓 icloud
           </button>
           <button onClick={() => setScheduleModal({ open: true, schedule: null, defaultDate: new Date() })} className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700">
             ＋ 스케줄 등록

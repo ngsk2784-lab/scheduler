@@ -22,6 +22,9 @@ export interface Employee {
   department: string | null;
   phone: string | null;
   is_active: boolean;
+  branch: string | null; // 조직구조: 지점/사업장
+  team: string | null; // 조직구조: 팀
+  annual_allowance: number | null; // 연간 연차 부여일수
   created_at: string;
 }
 
@@ -44,6 +47,38 @@ export interface Report {
   source: ReportSource;
   summary: string | null;
   content: string;
+  tags: string[]; // 보고 태그
+  created_at: string;
+}
+
+// 출근부 (당직/출퇴근)
+export type AttendanceStatus =
+  | "present"
+  | "absent"
+  | "half"
+  | "vacation"
+  | "duty"; // 당직
+
+export interface Attendance {
+  id: string;
+  employee_id: string;
+  att_date: string; // YYYY-MM-DD
+  status: AttendanceStatus;
+  time_in: string | null; // HH:MM
+  time_out: string | null; // HH:MM
+  note: string | null;
+  created_at: string;
+}
+
+// 일정 확인/응답
+export type ConfirmationResponse = "pending" | "yes" | "maybe" | "no";
+
+export interface ScheduleConfirmation {
+  id: string;
+  schedule_id: string;
+  employee_id: string;
+  response: ConfirmationResponse;
+  note: string | null;
   created_at: string;
 }
 

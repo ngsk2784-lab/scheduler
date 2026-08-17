@@ -1,0 +1,17 @@
+{
+  "name": "회사 스케줄 달력",
+  "short_name": "스케줄",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#4f46e5",
+  "description": "회사 전용 스케줄 + 보고 달력",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

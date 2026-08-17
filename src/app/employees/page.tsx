@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useData } from "@/lib/DataContext";
 import type { Employee } from "@/lib/types";
 import { EmployeeModal } from "@/components/EmployeeModal";
-import { Spinner } from "@/components/ui";
+import { Spinner, inputCls } from "@/components/ui";
 import type { EmployeeInput } from "@/lib/supabase";
 
 export default function EmployeesPage() {
@@ -14,6 +14,19 @@ export default function EmployeesPage() {
     open: boolean;
     employee: Employee | null;
   }>({ open: false, employee: null });
+  const [branchFilter, setBranchFilter] = useState("");
+
+  const branches = useMemo(() => {
+    const s = new Set<string>();
+    employees.forEach((e) => e.branch && s.add(e.branch));
+    return Array.from(s).sort();
+  }, [employees]);
+
+  const list = useMemo(
+    () =>
+      employees.filter((e) => !branchFilter || e.branch === branchFilter),
+    [employees, branchFilter]
+  );
 
   return (
     <div className="space-y-4">
@@ -46,11 +59,28 @@ export default function EmployeesPage() {
         </div>
       </div>
 
+      <div className={inputCls.replace("w-full", "w-auto")}>
+        <select
+          className="w-auto bg-transparent outline-none"
+          value={branchFilter}
+          onChange={(e) => setBranchFilter(e.target.value)}
+        >
+          <option value="">전체 지점</option>
+          {branches.map((b) => (
+            <option key={b} value={b}>
+              🏢 {b}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {loading ? (
         <Spinner />
-      ) : employees.length === 0 ? (
+      ) : list.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center text-zinc-400">
-          등록된 직원이 없습니다. 새 직원을 추가해 주세요.
+          {employees.length === 0
+            ? "등록된 직원이 없습니다. 새 직원을 추가해 주세요."
+            : "해당 지점에 직원이 없습니다."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
@@ -58,9 +88,9 @@ export default function EmployeesPage() {
             <thead className="border-b border-zinc-100 bg-zinc-50 text-xs text-zinc-500">
               <tr>
                 <th className="px-4 py-3 font-semibold">직원</th>
-                <th className="px-4 py-3 font-semibold">부서</th>
+                <th className="px-4 py-3 font-semibold">지점/부서</th>
                 <th className="hidden px-4 py-3 font-semibold sm:table-cell">
-                  직급
+                  팀/직급
                 </th>
                 <th className="hidden px-4 py-3 font-semibold md:table-cell">
                   연락처
@@ -70,7 +100,7 @@ export default function EmployeesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {employees.map((e) => (
+              {list.map((e) => (
                 <tr key={e.id} className="hover:bg-zinc-50/50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -91,10 +121,11 @@ export default function EmployeesPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-zinc-600">
-                    {e.department ?? "—"}
+                    {e.branch ?? "—"}
+                    {e.branch && e.department ? ` / ${e.department}` : ""}
                   </td>
                   <td className="hidden px-4 py-3 text-zinc-600 sm:table-cell">
-                    {e.position ?? "—"}
+                    {[e.team, e.position].filter(Boolean).join(" / ") || "—"}
                   </td>
                   <td className="hidden px-4 py-3 text-zinc-600 md:table-cell">
                     {e.phone ?? "—"}

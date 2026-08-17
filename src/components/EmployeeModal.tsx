@@ -32,6 +32,9 @@ export function EmployeeModal({
   const [position, setPosition] = useState("");
   const [department, setDepartment] = useState("");
   const [phone, setPhone] = useState("");
+  const [branch, setBranch] = useState("");
+  const [team, setTeam] = useState("");
+  const [annualAllowance, setAnnualAllowance] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -45,6 +48,9 @@ export function EmployeeModal({
       setPosition(employee.position ?? "");
       setDepartment(employee.department ?? "");
       setPhone(employee.phone ?? "");
+      setBranch(employee.branch ?? "");
+      setTeam(employee.team ?? "");
+      setAnnualAllowance(employee.annual_allowance == null ? "" : String(employee.annual_allowance));
       setIsActive(employee.is_active);
     } else {
       setName("");
@@ -52,6 +58,9 @@ export function EmployeeModal({
       setPosition("");
       setDepartment("");
       setPhone("");
+      setBranch("");
+      setTeam("");
+      setAnnualAllowance("");
       setIsActive(true);
     }
   }, [open, employee]);
@@ -61,6 +70,9 @@ export function EmployeeModal({
     if (!name.trim()) return setMsg("이름을 입력해 주세요.");
     if (!/^#[0-9a-fA-F]{6}$/.test(color))
       return setMsg("색상 코드가 올바르지 않습니다.");
+
+    const annual =
+      annualAllowance.trim() === "" ? null : Number(annualAllowance);
 
     setSaving(true);
     setMsg(null);
@@ -72,6 +84,9 @@ export function EmployeeModal({
           position: position.trim() || null,
           department: department.trim() || null,
           phone: phone.trim() || null,
+          branch: branch.trim() || null,
+          team: team.trim() || null,
+          annual_allowance: Number.isNaN(annual as number) ? null : annual,
           is_active: isActive,
         },
         employee?.id
@@ -184,6 +199,36 @@ export function EmployeeModal({
               />
             </Field>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="지점/사업장">
+              <input
+                className={inputCls}
+                value={branch}
+                onChange={(e) => setBranch(e.target.value)}
+                placeholder="본사, 2호점..."
+              />
+            </Field>
+            <Field label="팀">
+              <input
+                className={inputCls}
+                value={team}
+                onChange={(e) => setTeam(e.target.value)}
+                placeholder="팀명 (선택)"
+              />
+            </Field>
+          </div>
+
+          <Field label="연차 부여일수 (선택, 통계용)">
+            <input
+              type="number"
+              min={0}
+              className={inputCls}
+              value={annualAllowance}
+              onChange={(e) => setAnnualAllowance(e.target.value)}
+              placeholder="예: 15"
+            />
+          </Field>
 
           <Field label="연락처 (선택)">
             <input

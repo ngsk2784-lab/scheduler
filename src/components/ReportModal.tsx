@@ -36,6 +36,7 @@ export function ReportModal({
   const [source, setSource] = useState<ReportSource>("manual");
   const [summary, setSummary] = useState("");
   const [content, setContent] = useState("");
+  const [tags, setTags] = useState("");
   const [pasteLog, setPasteLog] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -50,12 +51,14 @@ export function ReportModal({
       setSource(report.source);
       setSummary(report.summary ?? "");
       setContent(report.content);
+      setTags((report.tags ?? []).join(", "));
     } else {
       setEmployeeId(employees[0]?.id ?? "");
       setDate(defaultDate ? toDateOnly(defaultDate) : toDateOnly(new Date()));
       setSource("manual");
       setSummary("");
       setContent("");
+      setTags("");
     }
   }, [open, report, defaultDate, employees]);
 
@@ -82,6 +85,7 @@ export function ReportModal({
           source,
           summary: summary.trim() || null,
           content: content.trim(),
+          tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
         },
         report?.id
       );
@@ -186,6 +190,15 @@ export function ReportModal({
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="그 날 보고한 내용/논의한 내용을 입력하세요."
+            />
+          </Field>
+
+          <Field label="태그 (선택, 쉼표로 구분)">
+            <input
+              className={inputCls}
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="예: 미팅, 고객사, 결재"
             />
           </Field>
 
