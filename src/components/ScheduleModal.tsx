@@ -99,6 +99,9 @@ export function ScheduleModal({
     if (endAt.getTime() < startAt.getTime())
       return setMsg("종료 일시는 시작 일시보다 이전일 수 없습니다.");
 
+    // 종일 체크가 유형과 어긋나면 반차 구간은 종일이 아닌 것으로 보정
+    const finalAllDay = type === "HALF_AM" || type === "HALF_PM" ? false : allDay;
+
     setSaving(true);
     setMsg(null);
     try {
@@ -109,7 +112,7 @@ export function ScheduleModal({
           type,
           start_at: startAt.toISOString(),
           end_at: endAt.toISOString(),
-          all_day: allDay,
+          all_day: finalAllDay,
           description: description.trim() || null,
         },
         schedule?.id
@@ -120,6 +123,19 @@ export function ScheduleModal({
       setMsg("저장에 실패했습니다. 다시 시도해 주세요.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  function pickType(t: ScheduleType) {
+    setType(t);
+    if (t === "HALF_AM") {
+      setAllDay(false);
+      setStartTime("09:00");
+      setEndTime("13:00");
+    } else if (t === "HALF_PM") {
+      setAllDay(false);
+      setStartTime("13:00");
+      setEndTime("18:00");
     }
   }
 
@@ -187,7 +203,7 @@ export function ScheduleModal({
                 <button
                   key={t.value}
                   type="button"
-                  onClick={() => setType(t.value)}
+                  onClick={() => pickType(t.value)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                     type === t.value ? "bg-indigo-600 text-white" : t.badge
                   }`}

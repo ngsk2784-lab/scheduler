@@ -48,6 +48,8 @@ export default function HomePage() {
     LEAVE: true,
     ANNUAL: true,
     HALF: true,
+    HALF_AM: true,
+    HALF_PM: true,
     TRIP: true,
     FIELD: true,
     REMOTE: true,
@@ -66,6 +68,7 @@ export default function HomePage() {
     report: null,
   });
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [today] = useState(() => new Date());
 
   useEffect(() => {
     setEmpOn((prev) => {
@@ -211,6 +214,13 @@ export default function HomePage() {
     return reports.filter((r) => r.report_date === selectedDayStr);
   }, [reports, selectedDayStr]);
 
+  // 사이드패널 직원 상태 기준일 (선택일 없으면 오늘)
+  const statusDate = selectedDay ?? today;
+  const office = useMemo(
+    () => officeStaff(employees, schedules, statusDate),
+    [employees, schedules, statusDate]
+  );
+
   function toggleEmp(id: string) {
     setEmpOn((prev) => ({ ...prev, [id]: !(prev[id] ?? true) }));
   }
@@ -280,7 +290,63 @@ export default function HomePage() {
               />
             )}
           </div>
-          <aside className="space-y-4">
+          <aside className="space-y-4 lg:sticky lg:top-[64px] lg:self-start">
+            {/* 직원 상태 (상시 표시) */}
+            <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-sm font-bold text-zinc-900">👥 직원 상태</h2>
+                <span className="text-[11px] text-zinc-400">
+                  {statusDate.toLocaleDateString("ko-KR", {
+                    month: "long",
+                    day: "numeric",
+                  })}
+                  {selectedDay ? "" : " (오늘)"}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-2 py-2">
+                  <div className="text-2xl font-bold text-emerald-700">
+                    {office.am.length}
+                  </div>
+                  <div className="text-emerald-700">🌅 오전 사무실</div>
+                </div>
+                <div className="rounded-xl border border-sky-200 bg-sky-50 px-2 py-2">
+                  <div className="text-2xl font-bold text-sky-700">
+                    {office.pm.length}
+                  </div>
+                  <div className="text-sky-700">🌇 오후 사무실</div>
+                </div>
+              </div>
+              <div className="mt-2 space-y-1.5 text-xs">
+                <div className="font-semibold text-zinc-500">🌅 오전</div>
+                {office.am.length ? (
+                  <div className="flex flex-wrap gap-1">
+                    {office.am.map((e) => (
+                      <span key={e.id} className="inline-flex items-center gap-1 rounded-full bg-zinc-50 px-1.5 py-0.5 font-medium text-zinc-700 ring-1 ring-zinc-200">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: e.color }} />
+                        {e.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-zinc-400">(없음)</span>
+                )}
+                <div className="mt-1.5 font-semibold text-zinc-500">🌇 오후</div>
+                {office.pm.length ? (
+                  <div className="flex flex-wrap gap-1">
+                    {office.pm.map((e) => (
+                      <span key={e.id} className="inline-flex items-center gap-1 rounded-full bg-zinc-50 px-1.5 py-0.5 font-medium text-zinc-700 ring-1 ring-zinc-200">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: e.color }} />
+                        {e.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-zinc-400">(없음)</span>
+                )}
+              </div>
+            </section>
+
             <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-bold text-zinc-900">👥 직원 필터</h2>
@@ -406,51 +472,6 @@ function DayDetail({
   onEditSchedule: (s: Schedule) => void;
   onEditReport: (r: Report) => void;
 }) {
-  // 직원별 그날의 상태 (유형 우선순위: 휴가/연차/반차 > 출장/외근/재택 > 사무실)
-  const STAFF_STATUS: Record<
-    ScheduleType,
-    { label: string; badge: string; icon: string }
-  > = {
-    WORK: { label: "사무실", badge: "bg-sky-100 text-sky-700", icon: "🏢" },
-    LEAVE: { label: "휴가", badge: "bg-rose-100 text-rose-700", icon: "🏖️" },
-    ANNUAL: { label: "연차", badge: "bg-fuchsia-100 text-fuchsia-700", icon: "🌴" },
-    HALF: { label: "반차", badge: "bg-orange-100 text-orange-700", icon: "🌗" },
-    TRIP: { label: "출장", badge: "bg-violet-100 text-violet-700", icon: "✈️" },
-    FIELD: { label: "외근", badge: "bg-amber-100 text-amber-700", icon: "🚗" },
-    REMOTE: { label: "재택", badge: "bg-green-100 text-green-700", icon: "🏠" },
-    OTHER: { label: "기타", badge: "bg-gray-100 text-gray-600", icon: "📌" },
-  };
-  const STATUS_PRIORITY: ScheduleType[] = [
-    "LEAVE",
-    "ANNUAL",
-    "HALF",
-    "TRIP",
-    "FIELD",
-    "REMOTE",
-    "WORK",
-    "OTHER",
-  ];
-  // 사무실(WORK)만 활성, 그 외(외근/출장/휴가/재택 등)는 비활성
-  const staff = employees
-    .filter((e) => e.is_active)
-    .map((emp) => {
-      let type: ScheduleType = "WORK";
-      for (const p of STATUS_PRIORITY) {
-        if (schedules.some((s) => s.employee_id === emp.id && s.type === p)) {
-          type = p;
-          break;
-        }
-      }
-      return { emp, type };
-    })
-    .sort((a, b) => {
-      // 사무실 인원을 먼저 (효율적 배치)
-      const oa = a.type === "WORK" ? 0 : 1;
-      const ob = b.type === "WORK" ? 0 : 1;
-      return oa - ob || a.emp.name.localeCompare(b.emp.name, "ko");
-    });
-  const inOffice = staff.filter((s) => s.type === "WORK").length;
-
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -471,46 +492,6 @@ function DayDetail({
           </button>
         </div>
       </div>
-
-      {staff.length > 0 && (
-        <div className="mb-3 rounded-xl border border-zinc-200 bg-white p-3">
-          <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-zinc-500">
-            <span>👥 직원 상태</span>
-            <span className="text-emerald-600">
-              🏢 사무실 {inOffice}명 / {staff.length}명
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {staff.map(({ emp, type }) => {
-              const st = STAFF_STATUS[type];
-              const inOfficeNow = type === "WORK";
-              return (
-                <span
-                  key={emp.id}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium ring-1 ${
-                    inOfficeNow
-                      ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
-                      : "bg-zinc-50 text-zinc-400 ring-zinc-200 grayscale-50"
-                  }`}
-                >
-                  <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: emp.color }}
-                  />
-                  <span className="whitespace-nowrap">
-                    {st.icon} {emp.name}
-                  </span>
-                  <span
-                    className={`rounded px-1 py-0.5 text-[10px] font-semibold ${st.badge}`}
-                  >
-                    {inOfficeNow ? "근무" : st.label}
-                  </span>
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {schedules.length === 0 && reports.length === 0 ? (
         <p className="text-sm text-zinc-400">등록된 일정과 보고가 없습니다.</p>
@@ -591,6 +572,67 @@ function addDays(d: Date, n: number): Date {
 function trimTitle(s: string, max = 18): string {
   const t = s.replace(/\s+/g, " ").trim();
   return t.length > max ? t.slice(0, max) + "…" : t;
+}
+
+// 유형별 오전/오후 사무실 여부
+const TYPE_OFFICE: Record<ScheduleType, { am: boolean; pm: boolean }> = {
+  WORK: { am: true, pm: true },
+  LEAVE: { am: false, pm: false },
+  ANNUAL: { am: false, pm: false },
+  HALF: { am: false, pm: false },
+  HALF_AM: { am: false, pm: true }, // 오전 반차 → 오후는 사무실
+  HALF_PM: { am: true, pm: false }, // 오후 반차 → 오전은 사무실
+  TRIP: { am: false, pm: false },
+  FIELD: { am: false, pm: false },
+  REMOTE: { am: false, pm: false },
+  OTHER: { am: false, pm: false },
+};
+const OFFICE_PRIORITY: ScheduleType[] = [
+  "LEAVE",
+  "ANNUAL",
+  "HALF",
+  "HALF_AM",
+  "HALF_PM",
+  "TRIP",
+  "FIELD",
+  "REMOTE",
+  "WORK",
+  "OTHER",
+];
+
+function coveringSchedules(schedules: Schedule[], dateStr: string): Schedule[] {
+  return schedules.filter((s) => {
+    const sd = toDateOnly(new Date(s.start_at));
+    const ed = toDateOnly(new Date(s.all_day ? s.end_at : s.start_at));
+    return sd <= dateStr && ed >= dateStr;
+  });
+}
+
+// 특정 날짜의 오전/오후 사무실 출근자 목록
+function officeStaff(
+  employees: Employee[],
+  schedules: Schedule[],
+  referenceDate: Date
+): { am: Employee[]; pm: Employee[] } {
+  const ds = toDateOnly(referenceDate);
+  const cov = coveringSchedules(schedules, ds);
+  const am: Employee[] = [];
+  const pm: Employee[] = [];
+  for (const emp of employees.filter((e) => e.is_active)) {
+    let type: ScheduleType = "WORK";
+    for (const p of OFFICE_PRIORITY) {
+      if (cov.some((s) => s.employee_id === emp.id && s.type === p)) {
+        type = p;
+        break;
+      }
+    }
+    const o = TYPE_OFFICE[type];
+    if (o.am) am.push(emp);
+    if (o.pm) pm.push(emp);
+  }
+  am.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  pm.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  return { am, pm };
 }
 
 

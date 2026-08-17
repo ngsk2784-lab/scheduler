@@ -4,7 +4,9 @@ export type ScheduleType =
   | "WORK" // 출근/근무
   | "LEAVE" // 휴가
   | "ANNUAL" // 연차
-  | "HALF" // 반차
+  | "HALF" // 반차 (구형/호환용)
+  | "HALF_AM" // 오전 반차
+  | "HALF_PM" // 오후 반차
   | "TRIP" // 출장
   | "FIELD" // 외근
   | "REMOTE" // 재택

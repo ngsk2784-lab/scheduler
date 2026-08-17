@@ -21,7 +21,7 @@ create table if not exists public.schedules (
   id          uuid primary key default gen_random_uuid(),
   employee_id uuid not null references public.employees(id) on delete cascade,
   title       text not null,
-  type        text not null default 'WORK',             -- WORK/LEAVE/ANNUAL/HALF/TRIP/FIELD/REMOTE/OTHER
+  type        text not null default 'WORK',             -- WORK/LEAVE/ANNUAL/HALF/HALF_AM/HALF_PM/TRIP/FIELD/REMOTE/OTHER
   start_at    timestamptz not null,
   end_at      timestamptz not null,
   all_day     boolean not null default true,            -- 종일 여부
