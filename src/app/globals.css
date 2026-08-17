@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fafafa;
+  --foreground: #18181b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* FullCalendar 맞춤 커스텀 스타일 */
+.fc .fc-toolbar-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #18181b;
+}
+.fc .fc-button-primary {
+  background-color: #4f46e5;
+  border-color: #4f46e5;
+}
+.fc .fc-button-primary:hover {
+  background-color: #4338ca;
+  border-color: #4338ca;
+}
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+  background-color: #312e81;
+  border-color: #312e81;
+}
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+  text-decoration: none;
+  color: #3f3f46;
+}
+.fc .fc-daygrid-day.fc-day-today {
+  background-color: #eef2ff;
+}
+.fc-event {
+  cursor: pointer;
+}
+
+
+/* 보고 / 공휴일 이벤트: 기본 이벤트 박스 스타일 제거 */
+.fc .fc-event.report-event,
+.fc .fc-event.holiday-event {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  padding: 0;
+  box-shadow: none;
+}
+.fc .fc-event.report-event .fc-event-time,
+.fc .fc-event.holiday-event .fc-event-time {
+  display: none;
+}

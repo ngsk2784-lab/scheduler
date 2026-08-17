@@ -1,0 +1,270 @@
+"use client";
+
+import { useEffect, useState, type FormEvent } from "react";
+import type { Employee, Schedule, ScheduleType } from "@/lib/types";
+import { SCHEDULE_TYPES, toDateOnly } from "@/lib/constants";
+import type { ScheduleInput } from "@/lib/supabase";
+import {
+  Modal,
+  Field,
+  DangerButton,
+  SecondaryButton,
+  inputCls,
+} from "@/components/ui";
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  employees: Employee[];
+  schedule: Schedule | null; // null = 신규 등록
+  defaultDate?: Date;
+  defaultEmployeeId?: string;
+  onSave: (input: ScheduleInput, id?: string) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
+}
+
+export function ScheduleModal({
+  open,
+  onClose,
+  employees,
+  schedule,
+  defaultDate,
+  defaultEmployeeId,
+  onSave,
+  onDelete,
+}: Props) {
+  const [employeeId, setEmployeeId] = useState("");
+  const [title, setTitle] = useState("");
+  const [type, setType] = useState<ScheduleType>("WORK");
+  const [allDay, setAllDay] = useState(true);
+  const [startDate, setStartDate] = useState("");
+  const [startTime, setStartTime] = useState("09:00");
+  const [endDate, setEndDate] = useState("");
+  const [endTime, setEndTime] = useState("18:00");
+  const [description, setDescription] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  // 열릴 때마다 폼 초기화
+  useEffect(() => {
+    if (!open) return;
+    setMsg(null);
+    const base = defaultDate ?? new Date();
+    const baseStr = toDateOnly(base);
+    const defaultEmp =
+      defaultEmployeeId && employees.some((e) => e.id === defaultEmployeeId)
+        ? defaultEmployeeId
+        : employees[0]?.id ?? "";
+
+    if (schedule) {
+      setEmployeeId(schedule.employee_id);
+      setTitle(schedule.title);
+      setType(schedule.type);
+      setAllDay(schedule.all_day);
+      const s = new Date(schedule.start_at);
+      const e = new Date(schedule.end_at);
+      setStartDate(toDateOnly(s));
+      setStartTime(schedule.all_day ? "09:00" : toLocalTime(s));
+      setEndDate(toDateOnly(e));
+      setEndTime(schedule.all_day ? "18:00" : toLocalTime(e));
+      setDescription(schedule.description ?? "");
+    } else {
+      setEmployeeId(defaultEmp);
+      setTitle("");
+      setType("WORK");
+      setAllDay(true);
+      setStartDate(baseStr);
+      setEndDate(baseStr);
+      setStartTime("09:00");
+      setEndTime("18:00");
+      setDescription("");
+    }
+  }, [open, schedule, defaultDate, defaultEmployeeId, employees]);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!employeeId) return setMsg("직원을 선택해 주세요.");
+    if (!title.trim()) return setMsg("일정명을 입력해 주세요.");
+    if (!startDate || !endDate) return setMsg("날짜를 선택해 주세요.");
+
+    const startAt = allDay
+      ? new Date(`${startDate}T00:00`)
+      : new Date(`${startDate}T${startTime || "09:00"}`);
+    const endAt = allDay
+      ? new Date(`${endDate}T23:59`)
+      : new Date(`${endDate}T${endTime || "18:00"}`);
+
+    if (isNaN(startAt.getTime()) || isNaN(endAt.getTime()))
+      return setMsg("날짜 형식이 올바르지 않습니다.");
+    if (endAt.getTime() < startAt.getTime())
+      return setMsg("종료 일시는 시작 일시보다 이전일 수 없습니다.");
+
+    setSaving(true);
+    setMsg(null);
+    try {
+      await onSave(
+        {
+          employee_id: employeeId,
+          title: title.trim(),
+          type,
+          start_at: startAt.toISOString(),
+          end_at: endAt.toISOString(),
+          all_day: allDay,
+          description: description.trim() || null,
+        },
+        schedule?.id
+      );
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setMsg("저장에 실패했습니다. 다시 시도해 주세요.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!schedule || !onDelete) return;
+    if (!window.confirm("이 스케줄을 삭제할까요? 되돌릴 수 없습니다.")) return;
+    await onDelete(schedule.id);
+    onClose();
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={schedule ? "스케줄 수정" : "새 스케줄 등록"}
+      footer={
+        <>
+          {schedule && onDelete && (
+            <div className="mr-auto">
+              <DangerButton onClick={handleDelete}>삭제</DangerButton>
+            </div>
+          )}
+          <SecondaryButton onClick={onClose}>취소</SecondaryButton>
+          <button
+            type="submit"
+            form="schedule-form"
+            disabled={saving}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? "저장 중..." : "저장"}
+          </button>
+        </>
+      }
+    >
+      <form id="schedule-form" onSubmit={handleSubmit}>
+        <div className="space-y-4">
+          <Field label="직원">
+            <select
+              className={inputCls}
+              value={employeeId}
+              onChange={(e) => setEmployeeId(e.target.value)}
+            >
+              <option value="">-- 직원 선택 --</option>
+              {employees.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                  {e.is_active ? "" : " (퇴사)"}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="일정명">
+            <input
+              className={inputCls}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="예: 고객사 미팅, 본사 출장"
+            />
+          </Field>
+
+          <Field label="유형">
+            <div className="flex flex-wrap gap-1.5">
+              {SCHEDULE_TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setType(t.value)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    type === t.value ? "bg-indigo-600 text-white" : t.badge
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <label className="flex items-center gap-2 text-sm text-zinc-700">
+            <input
+              type="checkbox"
+              checked={allDay}
+              onChange={(e) => setAllDay(e.target.checked)}
+              className="h-4 w-4 accent-indigo-600"
+            />
+            종일 일정
+          </label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="시작일">
+              <input
+                type="date"
+                className={inputCls}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </Field>
+            <Field label="종료일">
+              <input
+                type="date"
+                className={inputCls}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </Field>
+            {!allDay && (
+              <>
+                <Field label="시작 시간">
+                  <input
+                    type="time"
+                    className={inputCls}
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </Field>
+                <Field label="종료 시간">
+                  <input
+                    type="time"
+                    className={inputCls}
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </Field>
+              </>
+            )}
+          </div>
+
+          <Field label="메모 (선택)">
+            <textarea
+              className={`${inputCls} min-h-[70px] resize-y`}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="세부 내용이나 준비물 메모"
+            />
+          </Field>
+
+          {msg && <p className="text-sm font-medium text-rose-600">{msg}</p>}
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function toLocalTime(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(
+    d.getMinutes()
+  ).padStart(2, "0")}`;
+}
