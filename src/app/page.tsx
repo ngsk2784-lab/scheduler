@@ -430,7 +430,7 @@ function DayDetail({
     "WORK",
     "OTHER",
   ];
-  const OFF_SET = ["LEAVE", "ANNUAL", "HALF"];
+  // 사무실(WORK)만 활성, 그 외(외근/출장/휴가/재택 등)는 비활성
   const staff = employees
     .filter((e) => e.is_active)
     .map((emp) => {
@@ -444,10 +444,12 @@ function DayDetail({
       return { emp, type };
     })
     .sort((a, b) => {
-      const oa = OFF_SET.includes(a.type) ? 1 : 0;
-      const ob = OFF_SET.includes(b.type) ? 1 : 0;
-      return ob - oa || a.emp.name.localeCompare(b.emp.name, "ko");
+      // 사무실 인원을 먼저 (효율적 배치)
+      const oa = a.type === "WORK" ? 0 : 1;
+      const ob = b.type === "WORK" ? 0 : 1;
+      return oa - ob || a.emp.name.localeCompare(b.emp.name, "ko");
     });
+  const inOffice = staff.filter((s) => s.type === "WORK").length;
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -472,20 +474,23 @@ function DayDetail({
 
       {staff.length > 0 && (
         <div className="mb-3 rounded-xl border border-zinc-200 bg-white p-3">
-          <div className="mb-1.5 text-xs font-semibold text-zinc-500">
-            👥 직원 상태 ({staff.length})
+          <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-zinc-500">
+            <span>👥 직원 상태</span>
+            <span className="text-emerald-600">
+              🏢 사무실 {inOffice}명 / {staff.length}명
+            </span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {staff.map(({ emp, type }) => {
               const st = STAFF_STATUS[type];
-              const off = OFF_SET.includes(type);
+              const inOfficeNow = type === "WORK";
               return (
                 <span
                   key={emp.id}
                   className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium ring-1 ${
-                    off
-                      ? "bg-zinc-50 text-zinc-400 ring-zinc-200"
-                      : "bg-white text-zinc-700 ring-zinc-200"
+                    inOfficeNow
+                      ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
+                      : "bg-zinc-50 text-zinc-400 ring-zinc-200 grayscale-50"
                   }`}
                 >
                   <span
@@ -498,7 +503,7 @@ function DayDetail({
                   <span
                     className={`rounded px-1 py-0.5 text-[10px] font-semibold ${st.badge}`}
                   >
-                    {st.label}
+                    {inOfficeNow ? "근무" : st.label}
                   </span>
                 </span>
               );
