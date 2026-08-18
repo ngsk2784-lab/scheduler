@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { Employee, Report, ReportSource } from "@/lib/types";
 import { toDateOnly } from "@/lib/constants";
 import type { ReportInput } from "@/lib/supabase";
+import { useAuth } from "@/lib/AuthContext";
 import {
   Modal,
   Field,
@@ -31,6 +32,7 @@ export function ReportModal({
   onSave,
   onDelete,
 }: Props) {
+  const { user, isAdmin } = useAuth();
   const [employeeId, setEmployeeId] = useState("");
   const [date, setDate] = useState("");
   const [source, setSource] = useState<ReportSource>("manual");
@@ -40,6 +42,7 @@ export function ReportModal({
   const [pasteLog, setPasteLog] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const effectiveEmployeeId = isAdmin ? employeeId : user?.id ?? "";
 
   useEffect(() => {
     if (!open) return;
@@ -71,7 +74,10 @@ export function ReportModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!employeeId) return setMsg("직원을 선택해 주세요.");
+    if (!user) return setMsg("로그인 후 이용해 주세요.");
+    if (report && !isAdmin && report.employee_id !== user.id)
+      return setMsg("본인 보고만 수정할 수 있습니다.");
+    if (!effectiveEmployeeId) return setMsg("직원을 선택해 주세요.");
     if (!date) return setMsg("보고 날짜를 선택해 주세요.");
     if (!content.trim()) return setMsg("보고 내용을 입력해 주세요.");
 
@@ -80,7 +86,7 @@ export function ReportModal({
     try {
       await onSave(
         {
-          employee_id: employeeId,
+          employee_id: effectiveEmployeeId,
           report_date: date,
           source,
           summary: summary.trim() || null,
@@ -160,19 +166,25 @@ export function ReportModal({
           </div>
 
           <Field label="직원">
-            <select
-              className={inputCls}
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-            >
-              <option value="">-- 직원 선택 --</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                  {e.is_active ? "" : " (퇴사)"}
-                </option>
-              ))}
-            </select>
+            {isAdmin ? (
+              <select
+                className={inputCls}
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+              >
+                <option value="">-- 직원 선택 --</option>
+                {employees.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                    {e.is_active ? "" : " (퇴사)"}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-600">
+                {user?.name ?? "로그인 필요"} (본인)
+              </div>
+            )}
           </Field>
 
           <Field label="요약 (선택)">

@@ -5,6 +5,7 @@ import type { Employee, Schedule, ScheduleType, ConfirmationResponse } from "@/l
 import { SCHEDULE_TYPES, toDateOnly } from "@/lib/constants";
 import type { ScheduleInput } from "@/lib/supabase";
 import * as api from "@/lib/supabase";
+import { useAuth } from "@/lib/AuthContext";
 import {
   Modal,
   Field,
@@ -34,6 +35,7 @@ export function ScheduleModal({
   onSave,
   onDelete,
 }: Props) {
+  const { user, isAdmin } = useAuth();
   const [employeeId, setEmployeeId] = useState("");
   const [title, setTitle] = useState("");
   const [type, setType] = useState<ScheduleType>("WORK");
@@ -45,6 +47,7 @@ export function ScheduleModal({
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const effectiveEmployeeId = isAdmin ? employeeId : user?.id ?? "";
   const [confirms, setConfirms] = useState<Record<string, ConfirmationResponse>>({});
   const [confirmMsg, setConfirmMsg] = useState<string | null>(null);
 
@@ -125,7 +128,10 @@ export function ScheduleModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!employeeId) return setMsg("직원을 선택해 주세요.");
+    if (!user) return setMsg("로그인 후 이용해 주세요. (우측 상단 🔐)");
+    if (schedule && !isAdmin && schedule.employee_id !== user.id)
+      return setMsg("본인 일정만 수정할 수 있습니다.");
+    if (!effectiveEmployeeId) return setMsg("직원을 선택해 주세요.");
     if (!title.trim()) return setMsg("일정명을 입력해 주세요.");
     if (!startDate || !endDate) return setMsg("날짜를 선택해 주세요.");
 
@@ -149,7 +155,7 @@ export function ScheduleModal({
     try {
       await onSave(
         {
-          employee_id: employeeId,
+          employee_id: effectiveEmployeeId,
           title: title.trim(),
           type,
           start_at: startAt.toISOString(),
@@ -215,19 +221,25 @@ export function ScheduleModal({
       <form id="schedule-form" onSubmit={handleSubmit}>
         <div className="space-y-4">
           <Field label="직원">
-            <select
-              className={inputCls}
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-            >
-              <option value="">-- 직원 선택 --</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                  {e.is_active ? "" : " (퇴사)"}
-                </option>
-              ))}
-            </select>
+            {isAdmin ? (
+              <select
+                className={inputCls}
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+              >
+                <option value="">-- 직원 선택 --</option>
+                {employees.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                    {e.is_active ? "" : " (퇴사)"}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-600">
+                {user?.name ?? "로그인 필요"} {isAdmin ? "" : " (본인)"}
+              </div>
+            )}
           </Field>
 
           <Field label="일정명">

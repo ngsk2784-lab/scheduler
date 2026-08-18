@@ -25,6 +25,8 @@ export interface Employee {
   branch: string | null; // 조직구조: 지점/사업장
   team: string | null; // 조직구조: 팀
   annual_allowance: number | null; // 연간 연차 부여일수
+  password_hash: string | null; // 로그인 핀 해시
+  is_admin: boolean; // 관리자 권한
   created_at: string;
 }
 

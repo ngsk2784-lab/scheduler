@@ -8,6 +8,7 @@ import type { Attendance, AttendanceStatus } from "@/lib/types";
 import * as api from "@/lib/supabase";
 import { Spinner, inputCls } from "@/components/ui";
 import { toCsv, downloadFile } from "@/lib/exportCsv";
+import { useAuth } from "@/lib/AuthContext";
 
 const STATUS_LABELS: Record<AttendanceStatus, string> = {
   present: "출근",
@@ -26,6 +27,7 @@ const STATUS_BADGE: Record<AttendanceStatus, string> = {
 
 export default function AttendancePage() {
   const { employees, loading, error } = useData();
+  const { isAdmin } = useAuth();
   const [date, setDate] = useState("");
   const [records, setRecords] = useState<Attendance[]>([]);
   const [drafts, setDrafts] = useState<Record<string, Partial<Attendance>>>({});
@@ -85,6 +87,10 @@ export default function AttendancePage() {
   }
 
   async function saveRow(empId: string, name: string) {
+    if (!isAdmin) {
+      alert("출근부 기록 변경은 관리자만 할 수 있습니다.");
+      return;
+    }
     setBusy(empId);
     const d = draftFor(empId);
     try {

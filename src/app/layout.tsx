@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { DataProvider } from "@/lib/DataContext";
+import { AuthProvider } from "@/lib/AuthContext";
 import { Header } from "@/components/Header";
 
 const geistSans = Geist({
@@ -37,13 +38,15 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-zinc-50 text-zinc-900">
         <DataProvider>
-          <Header />
-          <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
-            {children}
-          </main>
-          <footer className="border-t border-zinc-200 py-4 text-center text-xs text-zinc-400">
-            회사 전용 스케줄 + 보고 달력 · Railway + Supabase
-          </footer>
+          <AuthProvider>
+            <Header />
+            <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
+              {children}
+            </main>
+            <footer className="border-t border-zinc-200 py-4 text-center text-xs text-zinc-400">
+              회사 전용 스케줄 + 보고 달력 · Railway + Supabase
+            </footer>
+          </AuthProvider>
         </DataProvider>
       </body>
     </html>

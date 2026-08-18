@@ -14,6 +14,18 @@ alter table if exists public.employees
 alter table if exists public.employees
   alter column annual_allowance type double precision using annual_allowance::double precision;
 
+-- 인증: 전화번호 로그인 + 권한
+alter table if exists public.employees
+  add column if not exists password_hash text,        -- 로그인 핀(해시). 기존 직원은 전화번호 뒷4자리로 자동 생성
+  add column if not exists is_admin boolean not null default false; -- 관리자 여부
+
+-- 관리자가 아무도 없으면 최초 직원 1명을 관리자로 지정 (잠금 방지)
+update public.employees
+   set is_admin = true
+ where id = (select id from public.employees order by created_at asc, id asc limit 1)
+   and not exists (select 1 from public.employees where is_admin = true);
+
+
 -- reports: 태그 배열
 alter table if exists public.reports
   add column if not exists tags text[] default '{}';

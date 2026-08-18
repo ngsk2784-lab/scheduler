@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { Employee } from "@/lib/types";
 import { EMPLOYEE_COLORS } from "@/lib/constants";
 import type { EmployeeInput } from "@/lib/supabase";
+import { useAuth } from "@/lib/AuthContext";
 import {
   Modal,
   Field,
@@ -27,6 +28,7 @@ export function EmployeeModal({
   onSave,
   onDelete,
 }: Props) {
+  const { user, isAdmin } = useAuth();
   const [name, setName] = useState("");
   const [color, setColor] = useState(EMPLOYEE_COLORS[0].value);
   const [position, setPosition] = useState("");
@@ -67,6 +69,7 @@ export function EmployeeModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!isAdmin) return setMsg("관리자만 직원을 등록/수정할 수 있습니다.");
     if (!name.trim()) return setMsg("이름을 입력해 주세요.");
     if (!/^#[0-9a-fA-F]{6}$/.test(color))
       return setMsg("색상 코드가 올바르지 않습니다.");

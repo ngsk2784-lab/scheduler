@@ -1,8 +1,10 @@
 "use client";
 
+import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAdmin } from "@/lib/admin";
+import { useAuth } from "@/lib/AuthContext";
+import { Modal, inputCls } from "@/components/ui";
 
 const NAV = [
   { href: "/", label: "📅 달력" },
@@ -14,57 +16,125 @@ const NAV = [
 
 export function Header() {
   const pathname = usePathname();
-  const admin = useAdmin();
+  const { user, isAdmin, openLogin, logout, changePin } = useAuth();
+  const [pinOpen, setPinOpen] = useState(false);
+  const [newPin, setNewPin] = useState("");
+  const [pinMsg, setPinMsg] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  function handleLockClick() {
-    if (!admin.configured) return;
-    if (admin.locked) {
-      const pin = window.prompt("관리자 PIN을 입력하세요.");
-      if (pin != null && !admin.unlock(pin)) window.alert("PIN이 올바르지 않습니다.");
-    } else {
-      admin.lock();
+  async function submitPin(e: FormEvent) {
+    e.preventDefault();
+    if (!/^\d{4}$/.test(newPin)) {
+      setPinMsg("4자리 숫자를 입력해 주세요.");
+      return;
+    }
+    try {
+      await changePin(newPin);
+      setPinOpen(false);
+      setNewPin("");
+      setPinMsg(null);
+      setMenuOpen(false);
+    } catch {
+      setPinMsg("변경에 실패했습니다.");
     }
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4">
-        <div className="flex items-center gap-1.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-lg text-white shadow-sm">
-            🗓️
-          </span>
-          <div className="leading-tight">
-            <div className="text-sm font-bold text-zinc-900">회사 스케줄 달력</div>
-            <div className="text-[11px] text-zinc-400">사내 전용</div>
+    <>
+      <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4">
+          <div className="flex items-center gap-1.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-lg text-white shadow-sm">
+              🗓️
+            </span>
+            <div className="leading-tight">
+              <div className="text-sm font-bold text-zinc-900">회사 스케줄 달력</div>
+              <div className="text-[11px] text-zinc-400">사내 전용</div>
+            </div>
+          </div>
+
+          <nav className="flex items-center gap-0.5 overflow-x-auto">
+            {NAV.map((n) => {
+              const active = n.href === "/" ? pathname === "/" : pathname.startsWith(n.href);
+              return (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  className={`whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
+                    active ? "bg-indigo-50 text-indigo-700" : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                  }`}
+                >
+                  {n.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="relative shrink-0">
+            {user ? (
+              <button
+                onClick={() => setMenuOpen((v) => !v)}
+                className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+              >
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: user.color }} />
+                {user.name}
+                {isAdmin && <span className="rounded bg-indigo-100 px-1 text-[10px] font-semibold text-indigo-600">관리자</span>}
+                <span className="text-zinc-400">▾</span>
+              </button>
+            ) : (
+              <button
+                onClick={openLogin}
+                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                🔐 로그인
+              </button>
+            )}
+            {menuOpen && user && (
+              <div className="absolute right-0 top-11 z-50 w-44 rounded-xl border border-zinc-200 bg-white shadow-lg">
+                <button
+                  onClick={() => { setPinOpen(true); setMenuOpen(false); }}
+                  className="block w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+                >
+                  🔑 핀 변경
+                </button>
+                <button
+                  onClick={() => { logout(); setMenuOpen(false); }}
+                  className="block w-full px-3 py-2 text-left text-sm text-rose-600 hover:bg-rose-50"
+                >
+                  로그아웃
+                </button>
+              </div>
+            )}
           </div>
         </div>
-        <nav className="flex items-center gap-0.5 overflow-x-auto">
-          {NAV.map((n) => {
-            const active = n.href === "/" ? pathname === "/" : pathname.startsWith(n.href);
-            return (
-              <Link
-                key={n.href}
-                href={n.href}
-                className={`whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
-                  active ? "bg-indigo-50 text-indigo-700" : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-                }`}
-              >
-                {n.label}
-              </Link>
-            );
-          })}
-          {admin.configured && (
-            <button
-              onClick={handleLockClick}
-              title={admin.locked ? "잠금 해제" : "잠금"}
-              className={`ml-1 rounded-lg px-2.5 py-2 text-sm ${admin.locked ? "text-rose-500 hover:bg-rose-50" : "text-emerald-600 hover:bg-emerald-50"}`}
-            >
-              {admin.locked ? "🔒" : "🔓"}
-            </button>
-          )}
-        </nav>
-      </div>
-    </header>
+      </header>
+
+      <Modal
+        open={pinOpen}
+        onClose={() => setPinOpen(false)}
+        title="🔑 로그인 핀 변경"
+        footer={
+          <button form="pin-form" type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+            변경
+          </button>
+        }
+      >
+        <form id="pin-form" onSubmit={submitPin} className="space-y-3">
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-zinc-600">새 핀 (4자리 숫자)</span>
+            <input
+              className={inputCls}
+              value={newPin}
+              maxLength={4}
+              onChange={(e) => setNewPin(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="1234"
+            />
+          </label>
+          {pinMsg && <p className="text-sm font-medium text-rose-600">{pinMsg}</p>}
+        </form>
+      </Modal>
+    </>
   );
 }
+
 

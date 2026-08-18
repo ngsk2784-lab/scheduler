@@ -7,9 +7,11 @@ import type { Employee } from "@/lib/types";
 import { EmployeeModal } from "@/components/EmployeeModal";
 import { Spinner, inputCls } from "@/components/ui";
 import type { EmployeeInput } from "@/lib/supabase";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function EmployeesPage() {
   const { employees, loading, error, saveEmployee, removeEmployee } = useData();
+  const { isAdmin } = useAuth();
   const [modal, setModal] = useState<{
     open: boolean;
     employee: Employee | null;
@@ -50,12 +52,14 @@ export default function EmployeesPage() {
           >
             ← 달력으로
           </Link>
-          <button
-            onClick={() => setModal({ open: true, employee: null })}
-            className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
-          >
-            ＋ 새 직원 등록
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setModal({ open: true, employee: null })}
+              className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
+            >
+              ＋ 새 직원 등록
+            </button>
+          )}
         </div>
       </div>
 
@@ -142,12 +146,14 @@ export default function EmployeesPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => setModal({ open: true, employee: e })}
-                      className="rounded-lg px-3 py-1.5 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-50"
-                    >
-                      수정
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => setModal({ open: true, employee: e })}
+                        className="rounded-lg px-3 py-1.5 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-50"
+                      >
+                        수정
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -16,6 +16,7 @@ import { ScheduleModal } from "@/components/ScheduleModal";
 import { ReportModal } from "@/components/ReportModal";
 import { Spinner } from "@/components/ui";
 import { toCsv, downloadFile, buildIcs } from "@/lib/exportCsv";
+import { useAuth } from "@/lib/AuthContext";
 
 interface ModalState {
   open: boolean;
@@ -42,6 +43,7 @@ export default function HomePage() {
     saveReport,
     removeReport,
   } = useData();
+  const { user: authUser, openLogin } = useAuth();
 
   const [empOn, setEmpOn] = useState<Record<string, boolean>>({});
   const [typeOn, setTypeOn] = useState<Record<ScheduleType, boolean>>({
@@ -286,7 +288,7 @@ export default function HomePage() {
           <Link href="/employees" className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50">
             👥 직원 관리
           </Link>
-          <button onClick={() => setReportModal({ open: true, report: null, defaultDate: new Date() })} className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 transition-colors hover:bg-amber-100">
+          <button onClick={() => (authUser ? setReportModal({ open: true, report: null, defaultDate: new Date() }) : openLogin())} className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 transition-colors hover:bg-amber-100">
             ＋ 📌 보고 등록
           </button>
           <button onClick={exportSchedulesCsv} className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-100">
@@ -295,7 +297,7 @@ export default function HomePage() {
           <button onClick={exportIcs} className="rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-2 text-sm font-semibold text-cyan-700 transition-colors hover:bg-cyan-100" title="구글/아이캘린더 구독용">
             🗓 icloud
           </button>
-          <button onClick={() => setScheduleModal({ open: true, schedule: null, defaultDate: new Date() })} className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700">
+          <button onClick={() => (authUser ? setScheduleModal({ open: true, schedule: null, defaultDate: new Date() }) : openLogin())} className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700">
             ＋ 스케줄 등록
           </button>
         </div>

@@ -104,6 +104,18 @@ export async function deleteEmployee(id: string) {
   if (error) throw error;
 }
 
+// 인증용: 핀/관리자 여부만 변경
+export async function updateEmployeeAuth(
+  id: string,
+  patch: { password_hash?: string | null; is_admin?: boolean }
+) {
+  const { error } = await getClient()
+    .from("employees")
+    .update(patch)
+    .eq("id", id);
+  if (error) throw error;
+}
+
 // ---- 스케줄 ----
 export async function fetchSchedules(): Promise<Schedule[]> {
   const { data, error } = await getClient()
