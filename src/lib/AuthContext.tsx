@@ -47,11 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 세션 복구
   useEffect(() => {
     const id = getSessionId();
-    if (id) {
-      const found = employees.find((e) => e.id === id);
-      if (found) setUser(found);
-      else clearSessionId();
-    }
+    if (!id) return;
+    if (employees.length === 0) return; // 직원 목록 로드 전에는 판단 금지
+    const found = employees.find((e) => e.id === id);
+    if (found) setUser(found);
+    else clearSessionId();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employees]);
 
