@@ -19,8 +19,10 @@ export async function register() {
       const kst = new Date(now.getTime() + 9 * 3600000);
       const h = kst.getUTCHours();
       const m = kst.getUTCMinutes();
+      const dow = kst.getUTCDay(); // 0=일, 6=토
       const dateKey = kst.toISOString().slice(0, 10);
-      if (h === 8 && m === 0 && lastSent !== dateKey) {
+      // 평일(월~금) 오전 8시(KST)에만 발송
+      if (h === 8 && m === 0 && dow !== 0 && dow !== 6 && lastSent !== dateKey) {
         lastSent = dateKey;
         const res = await fetch(url);
         console.log("[notify] auto send ->", res.status, dateKey);

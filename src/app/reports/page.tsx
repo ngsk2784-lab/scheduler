@@ -223,7 +223,7 @@ export default function ReportsPage() {
                             </span>
                           ))}
                         </div>
-                        <p className="mt-1 whitespace-pre-line text-sm text-zinc-600">
+                        <p className="mt-1 min-w-0 break-words whitespace-pre-line text-sm text-zinc-600">
                           {r.content}
                         </p>
                       </div>

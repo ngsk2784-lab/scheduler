@@ -12,10 +12,21 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* 모바일에서 테이블이 넘치지 않도록 가로 스크롤 허용 */
+.overflow-x-auto table {
+  min-width: 100%;
 }
 
 /* FullCalendar 맞춤 커스텀 스타일 */

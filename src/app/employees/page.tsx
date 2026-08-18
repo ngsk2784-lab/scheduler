@@ -87,7 +87,7 @@ export default function EmployeesPage() {
             : "해당 지점에 직원이 없습니다."}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-zinc-100 bg-zinc-50 text-xs text-zinc-500">
               <tr>
