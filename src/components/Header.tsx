@@ -24,8 +24,8 @@ export function Header() {
 
   async function submitPin(e: FormEvent) {
     e.preventDefault();
-    if (!/^\d{4}$/.test(newPin)) {
-      setPinMsg("4자리 숫자를 입력해 주세요.");
+    if (!/^[^\s]{4,16}$/.test(newPin)) {
+      setPinMsg("4~16자, 공백 없이 영문/숫자/특수문자로 입력해 주세요.");
       return;
     }
     try {
@@ -121,13 +121,14 @@ export function Header() {
       >
         <form id="pin-form" onSubmit={submitPin} className="space-y-3">
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-zinc-600">새 핀 (4자리 숫자)</span>
+            <span className="mb-1 block text-sm font-medium text-zinc-600">새 비밀번호 (4~16자)</span>
             <input
+              type="password"
               className={inputCls}
               value={newPin}
-              maxLength={4}
-              onChange={(e) => setNewPin(e.target.value.replace(/[^0-9]/g, ""))}
-              placeholder="1234"
+              maxLength={16}
+              onChange={(e) => setNewPin(e.target.value)}
+              placeholder="영문/숫자/특수문자"
             />
           </label>
           {pinMsg && <p className="text-sm font-medium text-rose-600">{pinMsg}</p>}
