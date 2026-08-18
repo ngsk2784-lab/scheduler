@@ -48,13 +48,16 @@ export default function StatsPage() {
         const my = monthSchedules.filter((s) => s.employee_id === emp.id);
         const counts: Record<string, number> = {};
         for (const s of my) counts[s.type] = (counts[s.type] ?? 0) + 1;
-        // 연차 사용일수 (연차·휴가 1일, 오전/오후 반차 각 0.5일 차감)
+        // 연차 사용일수: 연차·휴가 = 시작~종료 일수(포함), 오전/오후 반차 = 0.5
         let usedAnnual = 0;
         for (const s of schedules) {
           if (s.employee_id !== emp.id) continue;
           if (new Date(s.start_at).getFullYear() !== year) continue;
-          if (s.type === "ANNUAL" || s.type === "LEAVE") usedAnnual += 1;
-          else if (s.type === "HALF_AM" || s.type === "HALF_PM") usedAnnual += 0.5;
+          if (s.type === "HALF_AM" || s.type === "HALF_PM") {
+            usedAnnual += 0.5;
+          } else if (s.type === "ANNUAL" || s.type === "LEAVE") {
+            usedAnnual += spanDays(s.start_at, s.end_at);
+          }
         }
         return {
           emp,
@@ -186,6 +189,15 @@ export default function StatsPage() {
       </section>
     </div>
   );
+}
+
+function spanDays(startIso: string, endIso: string): number {
+  const s = new Date(startIso);
+  const e = new Date(endIso);
+  const sd0 = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+  const ed0 = new Date(e.getFullYear(), e.getMonth(), e.getDate());
+  const days = Math.round((ed0.getTime() - sd0.getTime()) / 86400000) + 1;
+  return Math.max(1, days);
 }
 
 function fmtDay(n: number | null | undefined): string {
