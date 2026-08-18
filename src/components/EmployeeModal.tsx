@@ -69,7 +69,9 @@ export function EmployeeModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!isAdmin) return setMsg("관리자만 직원을 등록/수정할 수 있습니다.");
+    // 본인 정보 또는 관리자만 수정 가능 (새 직원 등록은 관리자만)
+    const canEdit = isAdmin || (!!employee && employee.id === user?.id);
+    if (!canEdit) return setMsg("본인 정보 또는 관리자만 수정할 수 있습니다.");
     if (!name.trim()) return setMsg("이름을 입력해 주세요.");
     if (!/^#[0-9a-fA-F]{6}$/.test(color))
       return setMsg("색상 코드가 올바르지 않습니다.");
@@ -105,6 +107,10 @@ export function EmployeeModal({
 
   async function handleDelete() {
     if (!employee || !onDelete) return;
+    if (!isAdmin) {
+      alert("삭제는 관리자만 할 수 있습니다.");
+      return;
+    }
     if (
       !window.confirm(
         "직원을 삭제하면 관련 스케줄과 보고 기록도 함께 삭제됩니다.\n정말 삭제할까요?"

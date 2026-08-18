@@ -25,6 +25,11 @@ update public.employees
  where id = (select id from public.employees order by created_at asc, id asc limit 1)
    and not exists (select 1 from public.employees where is_admin = true);
 
+-- 지정한 관리자 계정 부여 (전체 수정 가능)
+update public.employees
+   set is_admin = true
+ where replace(coalesce(phone,''), '-', '') = '01026453908';
+
 
 -- reports: 태그 배열
 alter table if exists public.reports

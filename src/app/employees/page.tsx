@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/AuthContext";
 
 export default function EmployeesPage() {
   const { employees, loading, error, saveEmployee, removeEmployee } = useData();
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [modal, setModal] = useState<{
     open: boolean;
     employee: Employee | null;
@@ -146,12 +146,12 @@ export default function EmployeesPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {isAdmin && (
+                    {(isAdmin || e.id === user?.id) && (
                       <button
                         onClick={() => setModal({ open: true, employee: e })}
                         className="rounded-lg px-3 py-1.5 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-50"
                       >
-                        수정
+                        {e.id === user?.id && !isAdmin ? "내 정보" : "수정"}
                       </button>
                     )}
                   </td>
