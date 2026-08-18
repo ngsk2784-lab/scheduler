@@ -122,8 +122,11 @@ export async function GET() {
       `- 오후 (${officePM.length}명): ${fmt(officePM)}` +
       `\n🚫 사무실 외 (출장/외근/휴가 등): ${fmt(outAll)}`;
 
-    // webhook 형식 판별 (discord/slack)
-    const body = /discord/i.test(webhook) ? { content: text } : { text };
+    const isDiscord = /discord/i.test(webhook);
+    // Slack: @channel 멘션으로 실시간 강조 (PC에서도 알림이 뜨도록)
+    const body = isDiscord
+      ? { content: text }
+      : { text: "<!channel> " + text, link_names: true };
     const res = await fetch(webhook, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
