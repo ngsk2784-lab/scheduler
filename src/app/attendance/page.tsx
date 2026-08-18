@@ -7,6 +7,7 @@ import { toDateOnly } from "@/lib/constants";
 import type { Attendance, AttendanceStatus } from "@/lib/types";
 import * as api from "@/lib/supabase";
 import { Spinner, inputCls } from "@/components/ui";
+import { toCsv, downloadFile } from "@/lib/exportCsv";
 
 const STATUS_LABELS: Record<AttendanceStatus, string> = {
   present: "출근",
@@ -29,14 +30,43 @@ export default function AttendancePage() {
   const [records, setRecords] = useState<Attendance[]>([]);
   const [drafts, setDrafts] = useState<Record<string, Partial<Attendance>>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   useEffect(() => {
-    setDate(toDateOnly(new Date()));
+    const t = toDateOnly(new Date());
+    setDate(t);
+    setToDate(t);
+    const first = toDateOnly(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+    setFromDate(first);
     api
       .fetchAttendance()
       .then(setRecords)
       .catch((e) => console.error(e));
   }, []);
+
+  const empName = (id: string) => employees.find((e) => e.id === id)?.name ?? "?";
+
+  function exportRangeCsv() {
+    if (!fromDate || !toDate || fromDate > toDate) {
+      alert("날짜 범위를 확인해 주세요.");
+      return;
+    }
+    const rows: (string | null)[][] = [
+      ["날짜", "직원", "상태", "출근", "퇴근", "메모"],
+    ];
+    const inRange = records
+      .filter((r) => r.att_date >= fromDate && r.att_date <= toDate)
+      .sort((a, b) => (a.att_date < b.att_date ? -1 : a.att_date > b.att_date ? 1 : a.employee_id.localeCompare(b.employee_id)));
+    inRange.forEach((r) =>
+      rows.push([r.att_date, empName(r.employee_id), STATUS_LABELS[r.status], r.time_in, r.time_out, r.note])
+    );
+    downloadFile(`출근부_${fromDate}_~_${toDate}.csv`, toCsv(rows));
+  }
+
+  const rangeRecords = records.filter(
+    (r) => !fromDate || !toDate || (r.att_date >= fromDate && r.att_date <= toDate)
+  );
 
   const active = useMemo(() => employees.filter((e) => e.is_active), [employees]);
 
@@ -103,6 +133,17 @@ export default function AttendancePage() {
           </Link>
           <input type="date" className="rounded-lg border border-zinc-300 px-3 py-2 text-sm" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-zinc-200 bg-white p-3">
+        <span className="text-xs font-semibold text-zinc-500">📤 범위 한 번에 내보내기</span>
+        <input type="date" className="rounded-lg border border-zinc-300 px-2 py-1.5 text-sm" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+        <span className="text-zinc-400">~</span>
+        <input type="date" className="rounded-lg border border-zinc-300 px-2 py-1.5 text-sm" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+        <button onClick={exportRangeCsv} className="rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-violet-700">
+          ⬇ 범위 CSV
+        </button>
+        <span className="text-xs text-zinc-400">{rangeRecords.length}건</span>
       </div>
 
       <div className="flex flex-wrap gap-2 text-xs text-zinc-600">

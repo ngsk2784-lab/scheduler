@@ -48,12 +48,12 @@ export default function StatsPage() {
         const my = monthSchedules.filter((s) => s.employee_id === emp.id);
         const counts: Record<string, number> = {};
         for (const s of my) counts[s.type] = (counts[s.type] ?? 0) + 1;
-        // 연차 사용일수 (연차 1일, 오전/오후 반차 각 0.5일 차감)
+        // 연차 사용일수 (연차·휴가 1일, 오전/오후 반차 각 0.5일 차감)
         let usedAnnual = 0;
         for (const s of schedules) {
           if (s.employee_id !== emp.id) continue;
           if (new Date(s.start_at).getFullYear() !== year) continue;
-          if (s.type === "ANNUAL") usedAnnual += 1;
+          if (s.type === "ANNUAL" || s.type === "LEAVE") usedAnnual += 1;
           else if (s.type === "HALF_AM" || s.type === "HALF_PM") usedAnnual += 0.5;
         }
         return {
