@@ -135,6 +135,22 @@ export default function HomePage() {
       });
     });
 
+    // 휴가/연차/반차와 겹치는 업무(WORK)는 숨기기 위한 범위 지도
+    const LEAVE_TYPES = ["LEAVE", "ANNUAL", "HALF", "HALF_AM", "HALF_PM"];
+    const leaveByEmp = new Map<string, { sd: number; ed: number }[]>();
+    for (const sc of schedules) {
+      if (LEAVE_TYPES.includes(sc.type)) {
+        const sd = toDateOnly(new Date(sc.start_at));
+        const ed = toDateOnly(new Date(sc.all_day ? sc.end_at : sc.start_at));
+        const arr = leaveByEmp.get(sc.employee_id) ?? [];
+        arr.push({
+          sd: new Date(`${sd}T00:00:00`).getTime(),
+          ed: new Date(`${ed}T00:00:00`).getTime(),
+        });
+        leaveByEmp.set(sc.employee_id, arr);
+      }
+    }
+
     for (const s of schedules) {
       if (empOn[s.employee_id] === false) continue;
       if (!typeOn[s.type]) continue;
@@ -142,6 +158,17 @@ export default function HomePage() {
       const start = new Date(s.start_at);
       let end = new Date(s.end_at);
       if (s.all_day) end = addDays(end, 1);
+      // 업무(WORK)가 휴가/연차/반차 기간과 겹치면 그 업무는 표시에서 제외
+      if (s.type === "WORK") {
+        const ws = new Date(s.start_at);
+        const we = new Date(s.all_day ? s.end_at : s.start_at);
+        const ws0 = new Date(ws.getFullYear(), ws.getMonth(), ws.getDate()).getTime();
+        const we0 = new Date(we.getFullYear(), we.getMonth(), we.getDate()).getTime();
+        const overlaps = (leaveByEmp.get(s.employee_id) ?? []).some(
+          (l) => ws0 <= l.ed && we0 >= l.sd
+        );
+        if (overlaps) continue;
+      }
       list.push({
         id: `s-${s.id}`,
         title: s.title,

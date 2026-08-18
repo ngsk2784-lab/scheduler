@@ -27,7 +27,7 @@ const STATUS_BADGE: Record<AttendanceStatus, string> = {
 
 export default function AttendancePage() {
   const { employees, loading, error } = useData();
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [date, setDate] = useState("");
   const [records, setRecords] = useState<Attendance[]>([]);
   const [drafts, setDrafts] = useState<Record<string, Partial<Attendance>>>({});
@@ -59,6 +59,7 @@ export default function AttendancePage() {
     ];
     const inRange = records
       .filter((r) => r.att_date >= fromDate && r.att_date <= toDate)
+      .filter((r) => isAdmin || r.employee_id === user?.id) // 관리자=전체, 일반=본인만
       .sort((a, b) => (a.att_date < b.att_date ? -1 : a.att_date > b.att_date ? 1 : a.employee_id.localeCompare(b.employee_id)));
     inRange.forEach((r) =>
       rows.push([r.att_date, empName(r.employee_id), STATUS_LABELS[r.status], r.time_in, r.time_out, r.note])
