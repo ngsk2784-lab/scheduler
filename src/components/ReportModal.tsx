@@ -131,7 +131,7 @@ export function ReportModal({
     >
       <form id="report-form" onSubmit={handleSubmit}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="보고한 날짜">
               <input
                 type="date"
@@ -141,7 +141,7 @@ export function ReportModal({
               />
             </Field>
             <Field label="보고 원천">
-              <div className="flex gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 {(
                   [
                     { v: "manual", l: "✍️ 수기" },

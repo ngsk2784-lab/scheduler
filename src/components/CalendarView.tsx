@@ -58,14 +58,14 @@ export function CalendarView({
           const kind = arg.event.extendedProps?.kind;
           if (kind === "report") {
             return (
-              <span className="inline-flex items-center gap-0.5 whitespace-nowrap rounded bg-amber-100 px-1.5 text-[11px] font-medium leading-4 text-amber-800 ring-1 ring-amber-300">
+              <span className="inline-flex max-w-full items-center gap-0.5 overflow-hidden rounded bg-amber-100 px-1.5 text-[11px] font-medium leading-4 text-amber-800 ring-1 ring-amber-300" style={{ textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 📌 {arg.event.title}
               </span>
             );
           }
           if (kind === "holiday") {
             return (
-              <span className="whitespace-nowrap px-0.5 text-[11px] font-bold leading-4 text-rose-600">
+              <span className="block max-w-full overflow-hidden px-0.5 text-[11px] font-bold leading-4 text-rose-600" style={{ textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {arg.event.title}
               </span>
             );

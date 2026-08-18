@@ -162,7 +162,7 @@ export default function AttendancePage() {
       </div>
 
       <section className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-[560px] text-left text-sm">
           <thead className="border-b border-zinc-100 bg-zinc-50 text-xs text-zinc-500">
             <tr>
               <th className="px-3 py-2 font-semibold">직원</th>
@@ -200,7 +200,7 @@ export default function AttendancePage() {
                     <input className={inputCls} value={(d.note as string) ?? ""} onChange={(e) => setDraft(emp.id, { note: e.target.value })} placeholder="메모" />
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <button onClick={() => saveRow(emp.id, emp.name)} disabled={busy === emp.id} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">
+                    <button onClick={() => saveRow(emp.id, emp.name)} disabled={busy === emp.id} className="whitespace-nowrap rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">
                       {busy === emp.id ? "저장 중..." : "저장"}
                     </button>
                   </td>

@@ -43,13 +43,13 @@ export function Header() {
     <>
       <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4">
-          <div className="flex items-center gap-1.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-lg text-white shadow-sm">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-lg text-white shadow-sm">
               🗓️
             </span>
-            <div className="leading-tight">
-              <div className="text-sm font-bold text-zinc-900">회사 스케줄 달력</div>
-              <div className="text-[11px] text-zinc-400">사내 전용</div>
+            <div className="min-w-0 leading-tight">
+              <div className="truncate text-sm font-bold text-zinc-900">회사 스케줄 달력</div>
+              <div className="hidden text-[11px] text-zinc-400 sm:block">사내 전용</div>
             </div>
           </div>
 

@@ -73,3 +73,32 @@ body {
 .fc .fc-event.holiday-event .fc-event-time {
   display: none;
 }
+
+/* 보고/공휴일 꼬리표가 옆 날짜 셀을 침범하지 않게 */
+.fc .fc-event.report-event,
+.fc .fc-event.holiday-event {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* 모바일: 달력 툴바(월/주/일/목록, 좌우버튼)를 한 줄 가로 스크롤로 */
+@media (max-width: 640px) {
+  .fc .fc-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 4px;
+  }
+  .fc .fc-toolbar-chunk {
+    flex: 0 0 auto;
+  }
+  .fc .fc-button {
+    white-space: nowrap;
+    padding: 3px 8px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+  .fc .fc-toolbar-title {
+    font-size: 0.9rem;
+  }
+}
