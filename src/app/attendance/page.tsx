@@ -72,6 +72,11 @@ export default function AttendancePage() {
   );
 
   const active = useMemo(() => employees.filter((e) => e.is_active), [employees]);
+  // 일반 직원은 본인만, 관리자는 전체 표시
+  const rows = useMemo(
+    () => (isAdmin ? active : active.filter((e) => e.id === user?.id)),
+    [active, isAdmin, user]
+  );
 
   function draftFor(empId: string): Partial<Attendance> {
     const existing = records.find((r) => r.employee_id === empId && r.att_date === date);
@@ -88,8 +93,12 @@ export default function AttendancePage() {
   }
 
   async function saveRow(empId: string, name: string) {
-    if (!isAdmin) {
-      alert("출근부 기록 변경은 관리자만 할 수 있습니다.");
+    if (!user) {
+      alert("로그인 후 이용해 주세요.");
+      return;
+    }
+    if (!isAdmin && empId !== user.id) {
+      alert("본인 출근부 기록만 저장할 수 있습니다.");
       return;
     }
     setBusy(empId);
@@ -174,7 +183,7 @@ export default function AttendancePage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
-            {active.map((emp) => {
+            {rows.map((emp) => {
               const d = draftFor(emp.id);
               return (
                 <tr key={emp.id} className="hover:bg-zinc-50/60">
