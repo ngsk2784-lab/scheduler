@@ -1,140 +1,126 @@
-# 🗓️ 회사 스케줄 + 보고 달력 — 핸드오프 문서
+# 🗓️ 회사 스케줄 + 보고 달력 — 핸드오프 (2026-08 업데이트)
 
-새 세션에서 이 프로젝트를 바로 이어서 작업할 수 있도록 정리한 문서입니다. 파일 위치: `C:\Users\MSI\Desktop\scheduler\web`
+새 세션에서 이 프로젝트를 바로 이어서 작업할 수 있도록 정리한 최신 문서입니다.
+작업 폴더: `C:\Users\MSI\Desktop\scheduler\web`  ·  최신 커밋: `da0b1f0` (main, 원격과 동일)
 
----
-
-## 1. 개요
-회사 내부 전용 **스케줄(근태) + 보고(카톡/수기) 달력** 웹 앱.
-- **직원별 색상**으로 달력에 일정을 표시
-- 날짜 클릭 → 그날의 일정·보고 상세
-- **사이드 고정 직원 상태패널**(오전/오후 사무실 인원 판단)
-- 보고/수기 기록, 정렬·필터
-- **로그인 없이** 열람·입력 가능한 내부 오픈 도구 (요구사항)
+> ⚠️ 2026-08 현재 **Railway가 서버 과부하 점검 중**일 수 있음 → 배포/재배포·URL 접속이 잠시 안 될 수 있음.
+> 점검 후 Railway 대시보드에서 `Deployments` 상태가 `Deployed` 인지 확인하고, 필요 시 Redeploy.
 
 ---
 
-## 2. 현재 상태 (완료된 것)
-- [x] Next.js 16 (App Router) + TypeScript + Tailwind CSS 4
-- [x] FullCalendar v6 캘린더 (월/주/일/목록)
-- [x] Supabase 연동 + 공개 RLS 스키마
-- [x] 직원 / 스케줄 / 보고 CRUD (모달)
-- [x] 직원별 색상 필터, 근태 유형 필터, 공휴일 표시
-- [x] 연차(ANNUAL) 유형 추가
-- [x] **오전 반차(HALF_AM) / 오후 반차(HALF_PM)** 분리
-- [x] **사이드 고정 직원 상태패널**: 오전·오후 사무실 인원/이름
-- [x] 주간/일간 보기 시간 슬롯 + 시각 표시
-- [x] **카톡 자동엮기 보류**(UI 제거, 코드는 git 이력에 잔존)
-- [x] Railway 배포 (GitHub auto-deploy) + Node 22 고정
-- [x] 빌드 검증(로컬 `next build --webpack`) 통과, 3 라우트 200 확인
+## 1. 개요 / 현재 상태
+회사 내부 전용 **스케줄(근태) + 보고(카톡/수기) 달력** 웹 앱. Next.js 16 + FullCalendar v6 + Supabase + Railway.
+기능(거의 모두 구현됨):
+- [x] 직원별 색상 달력, 월/주/일/목록 보기, 공휴일, 직원/유형 필터, 이번 달 요약
+- [x] 직원·스케줄·보고 CRUD / **연차(ANNUAL)·오전반차(HALF_AM)·오후반차(HALF_PM)**
+- [x] **연차 소수(0.5) 지원** · **휴가도 연차에서 일수로 차감**(시작~종료 일수)
+- [x] **사이드 고정 직원 상태패널**(오전/오후 사무실 인원, 사무실 아니면 비활성)
+- [x] **일정에서 휴가/연차와 겹치는 "업무(WORK)" 숨김**
+- [x] **통계 `/stats`**(월간 집계, 연차 잔여, CSV/알림 버튼)
+- [x] **출근부 `/attendance`**(출근/퇴근/상태/당직, 날짜범위 CSV) — **일반직원은 본인만 보고/저장, 관리자 전체**
+- [x] **보고 검색 + 태그 + CSV 내보내기** (보고 자동엮기는 보류/삭제됨, git 이력에 존재)
+- [x] **조직구조(지점/팀) 필터**, 엑셀/CSV·iCal 내보내기, PWA 매니페스트, 관리자 PIN(선택)
+- [x] **인증/로그인**: 전화번호 + 비밀번호(4~16자, 영문/특수문자), 기존직원 자동가입, 세션 유지, **본인 정보만 본인 수정**, 관리자(전체) 권한 — `010-2645-3908` 을 관리자로 지정
+- [x] **슬랙 알림**: `@channel` 멘션 · 사무실 오전/오후/외부 인원 포함 · **매일 평일 8시(KST) 자동 발송**(`AUTO_NOTIFY_ON=on` 일 때)
+- [x] 모바일 UI 개선(테이블 가로스크롤, 헤더·툴바·모달·보고태그 배치)
 
 ---
 
-## 3. 실행 방법
+## 2. 실행 방법
 ```bash
 cd C:\Users\MSI\Desktop\scheduler\web
 npm install
-npm run dev        # http://localhost:3000
+npm run dev      # = next dev --webpack
 ```
-- **환경변수**: `web/.env.local` (로컬 진행 시 필수). 없다면 `.env.local.example` 복사 후 값 입력.
-  ```env
-  NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-  NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-  NEXT_PUBLIC_HOLIDAYS_API_KEY=   # 선택 (한국 공공데이터 키)
-  ```
-- **빌드**: `npm run build` (= `next build --webpack`).
-  ⚠️ 이 PC는 Turbopack 네이티브 바인딩이 없어 반드시 `--webpack` 필요. scripts에 이미 반영됨.
+- 필수 env: `web/.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
+- 선택 env: `WEBHOOK_URL`(슬랙/디스코드), `AUTO_NOTIFY_ON=on`, `NEXT_PUBLIC_HOLIDAYS_API_KEY`, `NEXT_PUBLIC_ADMIN_PIN`
+- 최신 내용은 `web/.env.example` 참고
+- 빌드: `npm run build` = `next build --webpack` (이 PC는 Turbopack SWC 바인딩 없어 반드시 `--webpack`)
 
 ---
 
-## 4. 배포 (Railway)
-- 원격: `https://github.com/ngsk2784-lab/scheduler` (branch `main`)
-- Railway 연결 → **push 시 자동 재배포**
-- `web/railway.json`: build `next build --webpack`, start `next start`, healthcheck `/`
-- `web/.nvmrc` = `22` (Nixpacks가 Node 22 사용 — **필수**, 없으면 Node 18로 빌드 실패)
-- **Railway Variables**(수동 유지):
-  - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-  - ⚠️ `NEXT_PUBLIC_*` 는 **빌드 타임 인라인**이라 변수 변경 후엔 반드시 **Redeploy(새 빌드)** 필요.
-- 배포 URL: Railway 대시보드 → 서비스 → Deployments / Settings→Networking (최초 성공 배포 후 생성).
+## 3. 배포 (Railway)
+- 원격: `github.com/ngsk2784-lab/scheduler` (branch `main`, push 시 자동 재배포)
+- `web/railway.json`: build `next build --webpack`, start `next start`, health `/`
+- `web/.nvmrc` = `22` (필수, 없으면 Node 18로 빌드 실패)
+- **Railway Variables(메인 웹 서비스)**:
+  - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `WEBHOOK_URL` = 슬랙 Incoming Webhook URL
+  - `AUTO_NOTIFY_ON = on`  ← ⭐ 자동 아침 알림을 켜려면 반드시
+- ⚠️ `NEXT_PUBLIC_*`는 빌드타임 인라인 → 변수 변경 후 **Redeploy(새 빌드)** 필요
+- 배포 URL: Railway 대시보드 → 서비스 → Deployments / Settings→Networking (Deployed 후 생성)
 
+### 자동 아침 알림 동작
+- 코드: `src/instrumentation.ts` (`register()`가 서버 시작 시 실행)
+- **평일(월~금) 8:00~8:02(KST)** 에 슬랙 채널로 `@channel` + 오늘 일정/사무실 인원 요약 발송
+- **조건**: `AUTO_NOTIFY_ON=on` + `WEBHOOK_URL` 설정 + Railway 서버 기동 중(Railway 24/7)
+- 시간은 KST(+9)로 계산(서버는 UTC). 점검 후 Redeploy하고 다음날 아침 확인.
+- 확인: Railway 로그에 `[notify] auto send -> ...` 가 있으면 발송됨. 없으면 env/기동 문제.
 ---
 
-## 5. 데이터 모델 (Supabase)
-`web/supabase/schema.sql` 에 정의 (SQL Editor에서 실행해야 테이블 생성됨).
-
-| 테이블 | 주요 컬럼 |
+## 4. 데이터 모델 (Supabase)
+`web/supabase/schema.sql` (기본 테이블+RLS) — **`web/supabase/migrations.sql` 이 최신** (새 컬럼/테이블/관리자 부여)
+| 테이블 | 주요 내용 |
 |--------|-----------|
-| `employees` | name, color, position, department, phone, is_active |
-| `schedules` | employee_id, title, type, start_at, end_at, all_day, description |
-| `reports` | employee_id, report_date, source(`kakao`/`manual`), summary, content |
+| `employees` | name, color, dept, phone, position, branch(지점), team(팀), annual_allowance(**double**), **password_hash**, **is_admin**, is_active |
+| `schedules` | employee_id, title, type(`WORK/LEAVE/ANNUAL/HALF/HALF_AM/HALF_PM/TRIP/FIELD/REMOTE/OTHER`), start_at, end_at, all_day, desc |
+| `reports` | employee_id, report_date, source(`kakao/manual`), summary, content, **tags(text[])** |
+| `attendance` | employee_id, att_date, status(`present/absent/half/vacation/duty`), time_in, time_out, note |
+| `schedule_confirmations` | schedule_id, employee_id, response(`yes/maybe/no/pending`) |
 
-- **RLS**: 비로그인 내부용 → 전 테이블 select/insert/update/delete `using(true)` 공개.
-  ⚠️ URL 공개 시 인증/권한 추가 권장.
-- `schedules.type` 값: `WORK, LEAVE, ANNUAL, HALF(구형), HALF_AM, HALF_PM, TRIP, FIELD, REMOTE, OTHER` (자유 문자열, 테이블 재생성 불필요)
+- **migrations.sql 이 중요한 것**: `annual_allowance double precision`(0.5 소수), `password_hash`, `is_admin`,
+  지점/팀, reports.tags, attendance/confirmations 테이블, **최초 1명 자동 관리자**, **`010-2645-3908` 관리자 지정**
+- RLS: 비로그인 내부용 공개 정책(읽기/쓰기 모두 true). 실제 인증은 **클라이언트(앱) 단**에서 적용됨.
 
 ---
 
-## 6. 파일 구조 / 역할
+## 5. 파일 구조 (역할)
 ```
-src/
-  app/
-    layout.tsx          # 루트 레이아웃 + DataProvider + Header
-    page.tsx            # 메인 달력 + 필터 + 사이드 상태패널 + DayDetail
-    employees/page.tsx  # 직원 관리 (CRUD)
-    reports/page.tsx    # 보고 기록 (필터/그룹핑)
-  components/
-    CalendarView.tsx    # FullCalendar 래퍼 (뷰·슬롯·이벤트 컨텐츠 커스텀)
-    ScheduleModal.tsx   # 스케줄 등록/수정 (오전/오후 반차 시간 자동설정)
-    ReportModal.tsx     # 보고 등록/수정 (카톡 로그 간편 파싱 내장)
-    EmployeeModal.tsx   # 직원 등록/수정 (색상 팔레트)
-    Header.tsx          # 상단 네비
-    ui.tsx              # Modal/Field/Button/Spinner 공용
-  lib/
-    DataContext.tsx     # 전역 데이터 + CRUD (Supabase 호출, 에러 배너)
-    supabase.ts         # supabase client(지연생성) + API 함수
-    types.ts            # 도메인 타입 (ScheduleType, Employee, ...)
-    constants.ts        # 유형 상수/맵, 직원 색상, 날짜 헬퍼
-    holidays.ts         # 공휴일 (정적 2025~27 + 선택 API)
-supabase/schema.sql     # 테이블 + RLS
-railway.json            # Railway 빌드/시작/헬스체크
-.nvmrc                  # Node 22
-.env.example / .env.local.example
+src/instrumentation.ts     # 서버 시작 훅 → 매일 평일 8시(KST) /api/notify 자동 호출
+src/app/
+  layout.tsx   # DataProvider + AuthProvider + Header + PWA meta
+  page.tsx     # 메인 달력 + 사이드 직원상태패널 + DayDetail + 필터/내보내기
+  attendance/page.tsx  # 출근부(본인만/관리자 전체), 범위 CSV
+  employees/page.tsx    # 직원 관리(관리자/본인만)
+  reports/page.tsx      # 보고 목록(검색/태그/CSV)
+  stats/page.tsx        # 통계(월간/연차잔여/알림/CSV)
+  api/notify/route.ts   # 알림 발송(Slack @channel/사무실 인원, GET)
+components/ CalendarView, ScheduleModal, ReportModal, EmployeeModal, Header, ui
+lib/ DataContext(전역 데이터), AuthContext(인증), auth(핀/세션 헬퍼),
+     supabase(API), types, constants, holidays, exportCsv, admin(PIN)
+supabase/ schema.sql, migrations.sql
 ```
 
 ---
 
-## 7. 주요 로직 포인트 (수정 시 주의)
-- **직원 상태(오전/오후 사무실)** 계산: `src/app/page.tsx` 하단 `officeStaff()` / `TYPE_OFFICE` / `OFFICE_PRIORITY`.
-  - 규칙: WORK만 오전·오후 둘 다 사무실. HALF_AM=오후만, HALF_PM=오전만, 휴가/연차/출장/외근/재택/기타=둘 다 X.
-  - 상태패널 기준일: `statusDate = selectedDay ?? today` (선택 없으면 오늘).
-- **캘린더 이벤트 조합** + 유형 필터/직원 필터: `page.tsx` `events` useMemo.
-- **일접근(daySchedules)** 필터는 `all_day ? end : start` 기준 날짜 포함 판단 — `officeStaff`의 `coveringSchedules`와 동일 로직.
-- **FullCalendar 이벤트**: 리포트/공휴일은 `className report-event/holiday-event`, 커스텀 `eventContent`로 작은 꼬리표/빨간 텍스트 렌더. 스케줄은 직원색 배경.
+## 6. 주요 로직 포인트 (수정 시 주의)
+- **오전/오후 사무실**: `page.tsx` 하단 `officeStaff()/TYPE_OFFICE/OFFICE_PRIORITY` — WORK만 둘 다, HALF_AM=오후만, HALF_PM=오전만, 휴가/외근/출장/재택=둘 다 X. 상태패널 기준일 `selectedDay ?? today`.
+- **업무 숨김**: `page.tsx` 이벤트 조합에서 `leaveByEmp`로 휴가/연차/반차 범위 지도 생성 → `WORK`가 겹치면 해당 업무 이벤트 제외.
+- **연차 차감(통계)**: `stats/page.tsx` `spanDays(start,end)` — 연차/휴가=일수, 반차=0.5. `annual_allowance` 실수형.
+- **인증**: `AuthContext` — 세션은 localStorage(`cal_session`). `hashPin`(SHA-256). 로그인은 phone+pin, 기존직원 자동가입(핀=phone뒷4). `isAdmin`은 `employee.is_admin`. 본인 정보만 본인 수정/삭제는 관리자.
+- **한글 인코딩 주의**: PowerShell `Set-Content`로 .tsx를 덮어쓰면 한국어가 깨져 SyntaxError → 반드시 **editor(UTF-8)** 로 수정 (이전에 발생).
+- **큰 파일 다중 삽입**: insert_line 오프셋이 꼬일 수 있음 → 고유 주석 앵커 치환(`/*__X__*/`) 방식이 안전.
 
 ---
 
-## 8. 알려진 이슈 / 주의사항
-1. **Turbopack 불가**: 이 개발PC는 `next build --webpack`/`next dev --webpack` 필수. Railway도 `railway.json`에 `--webpack` 반영돼 있음.
-2. **빌드 시 SWC 경고 무시**: 로그의 `Attempted to load @next/swc-win32-x64-msvc...is not a valid Win32` 는 정상(WASM 대체)이며 무해. 실제 에러는 그 아래 별도 표시.
-3. **`NEXT_PUBLIC_` 지연 생성**: `supabase.ts`의 `getClient()`가 빈 URL이면 에러를 던지고, DataContext가 "데이터를 불러오는 데 실패했습니다..." 배너 표시. → 즉 **위에 빨간 배너**는 "Supabase 연결/테이블 문제"를 의미.
-4. **배포 초기 실패 원인(Node 18)**은 `.nvmrc=22`로 해결됨. 재발 시 `.nvmrc` 확인.
-5. **editor 도구로 큰 파일 다중 삽입 시 라인 오프셋 문제**가 발생했었음 → 큰 편집은 "고유 주석 앵커 치환"(`/*__X__*/`) 방식이 안전.
+## 7. 알려진 이슈
+1. Turbopack 불가(개발PC) → `--webpack` 필수. Railway `railway.json`에도 반영.
+2. 빌드 시 `@next/swc-win32...not valid` 경고는 무해(WASM 대체).
+3. 위에 빨간 배너 = Supabase 연결/테이블 미생성 → `migrations.sql` 실행 필요.
+4. 슬랙 "채널 다시 눌러야 보임"은 **슬랙 클라이언트 특성**(모바일은 실시간, PC만 지연) — 앱 문제 아님. `@channel` 멘션으로 완화.
+5. 자동알림 안 옴 → **`AUTO_NOTIFY_ON=on` 누락**이 1순위. Railway env 확인+Redeploy.
+6. Railway 점검 중(2026-08)이면 배포/URL 일시 불가 → 점검 후 확인.
 
 ---
 
-## 9. 다음 단계 / 가능한 확장 (아직 안 한 것)
-- [ ] `카톡 완전 자동 감시`: 순수 웹으론 불가 — 카카오 챗봇/오픈빌더 or 앱 연동 보조 필요. (일괄 붙여넣기는 git 이력 `a53534d`에 존재해 필요 시 복원 가능)
-- [ ] 출근/퇴근 시간 표시, 당직 배정, 보고 검색
-- [ ] Supabase 테이블에 사진/첨부(Storage) 업로드
-- [ ] 인증/권한(관리자만 쓰기) 추가 (URL 공개 시 필요)
-- [ ] 배포 이후 실제 데이터로 스모크 테스트 (직원→스케줄→보고 저장 확인)
+## 8. 다음 단계 / 확장(미정)
+- Railway 점검 후: `Deployments → Deployed` 확인 → 자동 알림 다음날 아침 검증
+- (보류) 카톡 완전 자동 감시 / 보고 일괄 자동 등록 — git 이력 `a53534d`에 코드 잔존
+- 게스트용 열람, 관리자 대시보드, 보고 첨부(Storage), 진짜 서버강제 RLS(Auth uid) 등
 
 ---
 
-## 10. 환경 정보
-- OS: Windows (PowerShell; `&&` 대신 `;` 사용 필요)
-- Node v24(로컬) / Railway `.nvmrc=22`
-- 도구: npm 11
-- Git 사용자: `ngsk2784-lab` / `ngsk2784@gmail.com`
-- 원본 참고 이미지: `C:\Users\MSI\Desktop\scheduler\1..png` (미사용 유지)
+## 9. 환경
+- OS: Windows + PowerShell(`&&` 대신 `;`), Node v24(로컬), git user `ngsk2784-lab`
+- 원본 참고 이미지: `C:\Users\MSI\Desktop\scheduler\1..png`
+- Railway 계정 유료 + Supabase 계정 사용 중 (배포 24/7)
