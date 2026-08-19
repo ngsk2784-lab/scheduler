@@ -21,8 +21,8 @@ export async function register() {
       const m = kst.getUTCMinutes();
       const dow = kst.getUTCDay(); // 0=일, 6=토
       const dateKey = kst.toISOString().slice(0, 10);
-      // 평일(월~금) 오전 8시(KST)에만 발송
-      if (h === 8 && m === 0 && dow !== 0 && dow !== 6 && lastSent !== dateKey) {
+      // 평일(월~금) 오전 8시(KST) 0~2분 사이에 1회 발송 (분 단위 드리프트 방지)
+      if (h === 8 && m >= 0 && m <= 2 && dow !== 0 && dow !== 6 && lastSent !== dateKey) {
         lastSent = dateKey;
         const res = await fetch(url);
         console.log("[notify] auto send ->", res.status, dateKey);
@@ -32,7 +32,7 @@ export async function register() {
     }
   };
 
-  // 시작 직후 1회 확인 후, 60초마다 체크
+  // 시작 직후 1회 확인 후, 30초마다 체크
   await run();
-  setInterval(run, 60_000);
+  setInterval(run, 30_000);
 }
