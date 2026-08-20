@@ -8,6 +8,30 @@
 
 ---
 
+## 0. ⭐ 새 세션 시작 방법 + 체크리스트 방식 (반드시 먼저 읽기)
+이 프로젝트는 **"작업(구현) ↔ 사용자 테스트" 를 체크리스트로 번갈아가는 방식**으로 진행합니다.
+- **체크리스트 파일**: `C:\Users\MSI\Desktop\scheduler\CHECKLIST.md`
+  - ⚠️ git 저장소는 `web/` 하위이므로 **이 파일은 git에 커밋되지 않습니다.** 단, 같은 PC에 그대로 남아 새 세션에서도 바로 이어갈 수 있음.
+- 방식 규칙:
+  1. 새 기능/변경이 생기면 나(agent)가 테스트용 항목을 `- [ ] **n-x** 내용` 형태로 작성
+  2. 사용자가 실제 배포 URL에서 하나씩 테스트하고 `[ ]` → `[x]` 로 체크
+  3. 체크된 파일을 다시 보내면 → 코드 수정/기능 추가 → "변경 이력"&새 항목을 체크리스트에 갱신 → 다시 제시 → 반복
+- 현재 진행 상황: **사무실 도트 시뮬레이션(`/office`) 1차 완성 → CHECKLIST.md 10번 섹션 테스트 대기 중.**
+
+새 세션에서 처음 할 일:
+1. 코드 최신화: `cd C:\Users\MSI\Desktop\scheduler\web` → `git pull`
+2. 최근 작업 상태 확인: `git log --oneline -8`
+3. `CHECKLIST.md` 를 열어 **미체크(`[ ]`)** 항목 확인 → 그 항목들을 다음 작업으로 이어감
+4. 배포 방법: `web/` 안에서 `git add -A; git commit -m "..." ; git push origin main` → Railway 자동 재배포
+5. 테스트는 배포 URL(또는 로컬 `npm run dev`)에서 확인 → 체크리스트에 반영
+
+⚠️ 알려진 개발 환경 제약 (재발 방지)
+- `npx`가 PowerShell 실행정책으로 실행 불가 → 타입체크는 `node node_modules/typescript/bin/tsc --noEmit`
+- PowerShell `Set-Content`로 .tsx 처리 시 한글 깨짐 → **반드시 editor(UTF-8)** 로 수정
+- Turbopack 불가(개발PC) → `next build --webpack` / `npm run dev`(=next dev --webpack)
+
+---
+
 ## 1. 개요 / 현재 상태
 회사 내부 전용 **스케줄(근태) + 보고(카톡/수기) 달력** 웹 앱. Next.js 16 + FullCalendar v6 + Supabase + Railway.
 기능(거의 모두 구현됨):
@@ -23,6 +47,7 @@
 - [x] **인증/로그인**: 전화번호 + 비밀번호(4~16자, 영문/특수문자), 기존직원 자동가입, 세션 유지, **본인 정보만 본인 수정**, 관리자(전체) 권한 — `010-2645-3908` 을 관리자로 지정
 - [x] **슬랙 알림**: `@channel` 멘션 · 사무실 오전/오후/외부 인원 포함 · **매일 평일 8시(KST) 자동 발송**(`AUTO_NOTIFY_ON=on` 일 때)
 - [x] 모바일 UI 개선(테이블 가로스크롤, 헤더·툴바·모달·보고태그 배치)
+- [x] **사무실 도트 시뮬레이션 `/office`** — 3x3 책상(고정·넓게), 이름+직책 라벨, 기본은 책상 근무 + 이따금 이동/식사/대화(실생활 대사), 행동 후 책상 복귀
 
 ---
 
@@ -86,6 +111,8 @@ src/app/
   stats/page.tsx        # 통계(월간/연차잔여/알림/CSV)
   api/notify/route.ts   # 알림 발송(Slack @channel/사무실 인원, GET)
 components/ CalendarView, ScheduleModal, ReportModal, EmployeeModal, Header, ui
+             OfficeScene(사무실 시뮬레이션)/ pixels(도트 렌더러·스프라이트)
+src/app/office/page.tsx   # 사무실 페이지: 날짜 기준 상태→present/outCall 계산 후 OfficeScene에 전달
 lib/ DataContext(전역 데이터), AuthContext(인증), auth(핀/세션 헬퍼),
      supabase(API), types, constants, holidays, exportCsv, admin(PIN)
 supabase/ schema.sql, migrations.sql
@@ -94,6 +121,7 @@ supabase/ schema.sql, migrations.sql
 ---
 
 ## 6. 주요 로직 포인트 (수정 시 주의)
+- **사무실 시뮬레이션 `OfficeScene.tsx`**: 책상은 별도 레이어로 **고정**(캐릭터와 분리). 캐릭터 상태머신 `work→go→do(작업/식사/대화)→return→work`. **기본은 `work`(책상 근무)**, 이따금 이동(`EXTRA_SPOTS`)/간식(`EXTRA_SPOTS[0]`)/대화(실생활 `DIALOGUES` 대사, 2초마다 교체). `do` 종료 시 **반드시 `home`(자기 책상) 복귀**. 이동은 CSS transition(2.6s linear) + DOM ref(`nodeRef`/`innerRef`)로 직접 제어 → ⚠️ **React re-render가 위치를 되돌릴 수 있으니 JSX `style`에 `left/top`을 넣지 말 것**(ref로만 제어). 이름+직책은 캐릭터 위 라벨 상시 표시. 도트는 `pixels.tsx` `PixelSprite`(문자열 격자→SVG rect, `crispEdges`).
 - **오전/오후 사무실**: `page.tsx` 하단 `officeStaff()/TYPE_OFFICE/OFFICE_PRIORITY` — WORK만 둘 다, HALF_AM=오후만, HALF_PM=오전만, 휴가/외근/출장/재택=둘 다 X. 상태패널 기준일 `selectedDay ?? today`.
 - **업무 숨김**: `page.tsx` 이벤트 조합에서 `leaveByEmp`로 휴가/연차/반차 범위 지도 생성 → `WORK`가 겹치면 해당 업무 이벤트 제외.
 - **연차 차감(통계)**: `stats/page.tsx` `spanDays(start,end)` — 연차/휴가=일수, 반차=0.5. `annual_allowance` 실수형.
