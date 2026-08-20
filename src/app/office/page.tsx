@@ -1,129 +1,92 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useData } from "@/lib/DataContext";
-import type { Employee, Schedule, ScheduleType } from "@/lib/types";
-import { toDateInput, toDateOnly } from "@/lib/constants";
+import type { Attendance } from "@/lib/types";
+import { toDateOnly } from "@/lib/constants";
+import * as api from "@/lib/supabase";
 import { Spinner } from "@/components/ui";
-import { makeCharacter, buildPalette, PLANT_GRID, WINDOW_GRID, PixelSprite } from "@/components/pixels";
+import {
+  makeCharacter,
+  buildPalette,
+  PLANT_GRID,
+  WINDOW_GRID,
+  PixelSprite,
+} from "@/components/pixels";
 import { OfficeScene, type SceneChar } from "@/components/OfficeScene";
-
-// ─────────────────────────────────────────────────────────────
-// 날짜 기준 근태 상태 판정 (page.tsx 의 로직과 동일)
-// ─────────────────────────────────────────────────────────────
-const TYPE_OFFICE: Record<ScheduleType, { am: boolean; pm: boolean }> = {
-  WORK: { am: true, pm: true },
-  LEAVE: { am: false, pm: false },
-  ANNUAL: { am: false, pm: false },
-  HALF: { am: false, pm: false },
-  HALF_AM: { am: false, pm: true },
-  HALF_PM: { am: true, pm: false },
-  TRIP: { am: false, pm: false },
-  FIELD: { am: false, pm: false },
-  REMOTE: { am: false, pm: false },
-  OTHER: { am: false, pm: false },
-};
-const OFFICE_PRIORITY: ScheduleType[] = [
-  "LEAVE",
-  "ANNUAL",
-  "HALF",
-  "HALF_AM",
-  "HALF_PM",
-  "TRIP",
-  "FIELD",
-  "REMOTE",
-  "WORK",
-  "OTHER",
-];
-
-function coveringSchedules(schedules: Schedule[], dateStr: string): Schedule[] {
-  return schedules.filter((s) => {
-    const sd = toDateOnly(new Date(s.start_at));
-    const ed = toDateOnly(new Date(s.all_day ? s.end_at : s.start_at));
-    return sd <= dateStr && ed >= dateStr;
-  });
-}
-
-interface EmpStatus {
-  type: ScheduleType;
-  atOfficeAm: boolean;
-  atOfficePm: boolean;
-}
-
-function statusOf(
-  emp: Employee,
-  schedules: Schedule[],
-  dateStr: string
-): EmpStatus {
-  const cov = coveringSchedules(schedules, dateStr);
-  let type: ScheduleType = "WORK";
-  for (const p of OFFICE_PRIORITY) {
-    if (cov.some((s) => s.employee_id === emp.id && s.type === p)) {
-      type = p;
-      break;
-    }
-  }
-  const o = TYPE_OFFICE[type];
-  return { type, atOfficeAm: o.am, atOfficePm: o.pm };
-}
-
-const STATUS_LABEL: Record<ScheduleType, string> = {
-  WORK: "출근",
-  LEAVE: "휴가·연차",
-  ANNUAL: "휴가·연차",
-  HALF: "반차",
-  HALF_AM: "반차",
-  HALF_PM: "반차",
-  TRIP: "출장중",
-  FIELD: "외근중",
-  REMOTE: "재택중",
-  OTHER: "자리비움",
-};
 
 const roomPalette = buildPalette("#3b82f6", "#4a3b3f");
 
+const pad = (n: number) => String(n).padStart(2, "0");
+
+function toMin(hm: string | null | undefined): number {
+  if (!hm) return -1;
+  const [h, m] = hm.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return -1;
+  return h * 60 + m;
+}
+
+// 점심시간 12:00 ~ 13:30 (분 단위)
+const LUNCH_AM = 720; // 12:00
+const LUNCH_PM = 810; // 13:30
+
+// 사무실(책상)에서 근무하는 출근부 상태
+const OFFICE_STATUSES = new Set(["present", "half", "duty"]);
+
 export default function OfficePage() {
-  const { employees, schedules, loading, error } = useData();
-  const [selDate, setSelDate] = useState<string>(() => toDateInput(new Date()));
-  const dateStr = toDateOnly(new Date(selDate));
+  const { employees, loading, error } = useData();
+  const [attendance, setAttendance] = useState<Attendance[]>([]);
+  // 현재 시각 (실시간 반영용)
+  const [now, setNow] = useState<Date>(() => new Date());
 
-  const active = useMemo(
-    () => employees.filter((e) => e.is_active),
-    [employees]
-  );
+  // 이번 달 출근부 로드
+  useEffect(() => {
+    let alive = true;
+    api
+      .fetchAttendance(toDateOnly(new Date()).slice(0, 7))
+      .then((rows) => {
+        if (alive) setAttendance(rows);
+      })
+      .catch((e) => console.error(e));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
-  const statuses = useMemo(() => {
-    const map = new Map<string, EmpStatus>();
-    for (const e of active) map.set(e.id, statusOf(e, schedules, dateStr));
-    return map;
-  }, [active, schedules, dateStr]);
+  // 현재 시각 30초마다 갱신 (출근/퇴근/점심 구간 반영)
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
 
-  // 사무실에 있는 직원 (출근/오전·오후 출근 가능)
-  const present = useMemo((): SceneChar[] => {
+  const active = useMemo(() => employees.filter((e) => e.is_active), [employees]);
+  const todayStr = toDateOnly(now);
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const lunch = nowMin >= LUNCH_AM && nowMin < LUNCH_PM;
+
+  // 출근부 기준: 출근 시간 이후 ~ 퇴근 시간 이전이면 사무실에 표시
+  const present = useMemo<SceneChar[]>(() => {
+    const todayAtt = attendance.filter((a) => a.att_date === todayStr);
     return active
       .map((e, i) => {
-        const st = statuses.get(e.id);
-        const atOffice = !!st && (st.atOfficeAm || st.atOfficePm);
-        return atOffice
-          ? { id: e.id, name: e.name, color: e.color, position: e.position, char: makeCharacter(i, e.color) }
-          : null;
+        const rec = todayAtt.find((a) => a.employee_id === e.id);
+        if (!rec || !OFFICE_STATUSES.has(rec.status)) return null;
+        const tin = toMin(rec.time_in);
+        const tout = toMin(rec.time_out);
+        if (tin < 0 || nowMin < tin) return null; // 아직 출근 전
+        if (tout >= 0 && nowMin >= tout) return null; // 퇴근 이후
+        return {
+          id: e.id,
+          name: e.name,
+          position: e.position,
+          color: e.color,
+          char: makeCharacter(i, e.color),
+        };
       })
       .filter((x): x is SceneChar => x !== null);
-  }, [active, statuses]);
+  }, [active, attendance, todayStr, nowMin]);
 
-  // (외근/출장 직원 전화 연출은 제거됨)
-
-  const counts = useMemo(() => {
-    const c = { office: 0, field: 0, trip: 0, remote: 0, off: 0 };
-    for (const st of statuses.values()) {
-      if (st.atOfficePm || st.atOfficeAm) c.office += 1;
-      else if (st.type === "FIELD") c.field += 1;
-      else if (st.type === "TRIP") c.trip += 1;
-      else if (st.type === "REMOTE") c.remote += 1;
-      else c.off += 1;
-    }
-    return c;
-  }, [statuses]);
+  const lightsOff = present.length === 0;
 
   if (loading) return <Spinner />;
   if (error) {
@@ -136,69 +99,60 @@ export default function OfficePage() {
 
   return (
     <div className="space-y-4">
-      {/* 상단 툴바 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-zinc-900">🏢 사무실</h1>
-          <p className="text-sm text-zinc-500">
-            도트 생활 시뮬레이션 — 선택한 날짜의 사무실
-          </p>
+          <p className="text-sm text-zinc-500">출근부 기준 · 현재 시각 반영</p>
         </div>
-        <label className="flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm">
-          <span className="font-medium text-zinc-600">날짜</span>
-          <input
-            type="date"
-            value={selDate}
-            onChange={(e) => e.target.value && setSelDate(e.target.value)}
-            className="bg-transparent outline-none"
-          />
-        </label>
+        <div className="text-right">
+          <div className="text-sm font-medium text-zinc-500">
+            {now.getFullYear()}년 {now.getMonth() + 1}월 {now.getDate()}일
+          </div>
+          <div className="text-2xl font-bold tabular-nums text-zinc-900">
+            {pad(now.getHours())}:{pad(now.getMinutes())}:{pad(now.getSeconds())}
+          </div>
+        </div>
       </div>
 
-      {/* 요약 배지 */}
-      <div className="flex flex-wrap gap-2 text-xs font-medium">
-        <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-700">
-          사무실 {counts.office}명
-        </span>
-        <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">
-          외근 {counts.field}명
-        </span>
-        <span className="rounded-full bg-violet-100 px-3 py-1 text-violet-700">
-          출장 {counts.trip}명
-        </span>
-        <span className="rounded-full bg-green-100 px-3 py-1 text-green-700">
-          재택 {counts.remote}명
-        </span>
-        <span className="rounded-full bg-rose-100 px-3 py-1 text-rose-700">
-          휴가·연차 {counts.off}명
-        </span>
+      <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
+        <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-700">사무실 {present.length}명</span>
+        {lunch && (
+          <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">🍚 점심시간 (12:00~13:30)</span>
+        )}
+        {lightsOff && (
+          <span className="rounded-full bg-zinc-100 px-3 py-1 text-zinc-500">💡 형광등 꺼짐</span>
+        )}
       </div>
 
-      {/* 사무실 도트맵 */}
-      <div className="overflow-hidden rounded-2xl border border-zinc-300 shadow-sm">
-        {/* 벽 (창문/화분) */}
+      <div className="relative overflow-hidden rounded-2xl border border-zinc-300 shadow-sm">
         <div className="relative flex h-24 items-center justify-center gap-6 border-b-4 border-zinc-400 bg-zinc-300">
           <PixelSprite grid={WINDOW_GRID} palette={roomPalette} size={4} />
           <PixelSprite grid={PLANT_GRID} palette={roomPalette} size={4} />
           <PixelSprite grid={WINDOW_GRID} palette={roomPalette} size={4} />
         </div>
-        {/* 바닥 + 시뮬레이션 */}
-        <OfficeScene present={present} />
+
+        <OfficeScene present={present} lunch={lunch} />
+
+        {lightsOff && (
+          <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-zinc-950/80">
+            <div className="rounded-xl border border-zinc-700 bg-zinc-900/90 px-5 py-3 text-center text-sm font-semibold text-zinc-200 shadow-lg">
+              💡 형광등이 꺼져 있습니다
+              <div className="mt-0.5 text-xs font-normal text-zinc-400">지금은 사무실에 아무도 없어요</div>
+            </div>
+          </div>
+        )}
       </div>
 
       <p className="text-xs text-zinc-400">
-        캐릭터는 기본적으로 책상에서 근무하고, 이따금 이동·식사·대화합니다.
+        출근부 기준 출근 시간이 지나면 캐릭터가 책상에서 근무합니다. 12:00~13:30은
+        책상에서 점심을 먹고, 퇴근 시간이 지나면 화면에 나타나지 않습니다. 사무실에
+        아무도 없으면 형광등이 꺼집니다.
       </p>
+
       <div className="flex flex-wrap gap-1.5 text-[11px]">
         {present.map((p) => (
-          <span
-            key={p.id}
-            className="flex items-center gap-1 rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-zinc-600"
-          >
-            <span
-              className="inline-block h-2 w-2 rounded-full"
-              style={{ backgroundColor: p.color }}
-            />
+          <span key={p.id} className="flex items-center gap-1 rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-zinc-600">
+            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: p.color }} />
             {p.name}
           </span>
         ))}
