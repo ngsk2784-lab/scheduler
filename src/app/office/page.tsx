@@ -105,23 +105,13 @@ export default function OfficePage() {
         const st = statuses.get(e.id);
         const atOffice = !!st && (st.atOfficeAm || st.atOfficePm);
         return atOffice
-          ? { id: e.id, name: e.name, color: e.color, char: makeCharacter(i, e.color) }
+          ? { id: e.id, name: e.name, color: e.color, position: e.position, char: makeCharacter(i, e.color) }
           : null;
       })
       .filter((x): x is SceneChar => x !== null);
   }, [active, statuses]);
 
-  // 외근/출장 직원 (전화 이벤트용)
-  const outCall = useMemo((): SceneChar[] => {
-    return active
-      .map((e, i) => {
-        const st = statuses.get(e.id);
-        return st && (st.type === "FIELD" || st.type === "TRIP")
-          ? { id: e.id, name: e.name, color: e.color, char: makeCharacter(i, e.color) }
-          : null;
-      })
-      .filter((x): x is SceneChar => x !== null);
-  }, [active, statuses]);
+  // (외근/출장 직원 전화 연출은 제거됨)
 
   const counts = useMemo(() => {
     const c = { office: 0, field: 0, trip: 0, remote: 0, off: 0 };
@@ -193,11 +183,11 @@ export default function OfficePage() {
           <PixelSprite grid={WINDOW_GRID} palette={roomPalette} size={4} />
         </div>
         {/* 바닥 + 시뮬레이션 */}
-        <OfficeScene present={present} out={outCall} />
+        <OfficeScene present={present} />
       </div>
 
       <p className="text-xs text-zinc-400">
-        💡 외근/출장 직원에게 전화가 걸려오면 사무실 안에서 받는 연출이 나옵니다.
+        캐릭터는 기본적으로 책상에서 근무하고, 이따금 이동·식사·대화합니다.
       </p>
       <div className="flex flex-wrap gap-1.5 text-[11px]">
         {present.map((p) => (
