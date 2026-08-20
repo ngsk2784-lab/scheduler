@@ -161,12 +161,14 @@ export function PixelSprite({
   size = 1,
   className,
   title,
+  responsive,
 }: {
   grid: string[];
   palette: Palette;
   size?: number;
   className?: string;
   title?: string;
+  responsive?: boolean;
 }) {
   const h = grid.length;
   const w = grid[0].length;
@@ -187,14 +189,18 @@ export function PixelSprite({
   return (
     <svg
       viewBox={`0 0 ${w} ${h}`}
-      width={w * size}
-      height={h * size}
+      width={responsive ? undefined : w * size}
+      height={responsive ? undefined : h * size}
       role="img"
       aria-hidden={title ? undefined : true}
       aria-label={title}
       shapeRendering="crispEdges"
       className={className}
-      style={{ imageRendering: "pixelated", display: "block" }}
+      style={
+        responsive
+          ? { imageRendering: "pixelated", display: "block", width: "100%", height: "auto" }
+          : { imageRendering: "pixelated", display: "block" }
+      }
     >
       {title ? <title>{title}</title> : null}
       {rects}

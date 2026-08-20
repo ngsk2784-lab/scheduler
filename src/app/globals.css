@@ -69,6 +69,33 @@ body {
   padding: 0;
   box-shadow: none;
 }
+
+/* ── 사무실 페이지 : 걸어다니는 캐릭터 ── */
+.office-walker {
+  position: absolute;
+  z-index: 20;
+  will-change: left;
+}
+.office-walker .inner {
+  display: block;
+  animation: office-bob 0.5s ease-in-out infinite;
+}
+@keyframes office-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes office-walk-l {
+  from { left: -90px; }
+  to { left: 105%; }
+}
+@keyframes office-walk-r {
+  from { left: 105%; }
+  to { left: -90px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .office-walker .inner { animation: none; }
+  .office-walker { animation-duration: 99999s !important; }
+}
 .fc .fc-event.report-event .fc-event-time,
 .fc .fc-event.holiday-event .fc-event-time {
   display: none;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { useData } from "@/lib/DataContext";
 import type { Employee, Schedule, ScheduleType } from "@/lib/types";
 import { toDateInput, toDateOnly } from "@/lib/constants";
@@ -101,6 +101,27 @@ const STATUS_CLS: Record<ScheduleType, string> = {
 
 const roomPalette = buildPalette("#3b82f6", "#4a3b3f");
 
+// 사무실 책상 수 (5 x 5)
+const DESK_ROWS = 5;
+const DESK_COLS = 5;
+const DESK_COUNT = DESK_ROWS * DESK_COLS;
+
+// 걸어다니는 캐릭터 동선 (위/아래 통로)
+interface WalkerSpot {
+  pos: "top" | "bottom";
+  top?: string;
+  bottom?: string;
+  dir: "office-walk-l" | "office-walk-r";
+  dur: number;
+  delay: number;
+}
+const WALKER_SPOTS: WalkerSpot[] = [
+  { pos: "top", top: "6px", dir: "office-walk-r", dur: 18, delay: 0 },
+  { pos: "top", top: "52px", dir: "office-walk-l", dur: 22, delay: -9 },
+  { pos: "bottom", bottom: "6px", dir: "office-walk-l", dur: 20, delay: -12 },
+  { pos: "bottom", bottom: "52px", dir: "office-walk-r", dur: 24, delay: -5 },
+];
+
 export default function OfficePage() {
   const { employees, schedules, loading, error } = useData();
   const [selDate, setSelDate] = useState<string>(() => toDateInput(new Date()));
@@ -109,10 +130,6 @@ export default function OfficePage() {
 
   const active = useMemo(
     () => employees.filter((e) => e.is_active),
-    [employees]
-  );
-  const inactive = useMemo(
-    () => employees.filter((e) => !e.is_active),
     [employees]
   );
 
@@ -139,6 +156,23 @@ export default function OfficePage() {
     }
     return c;
   }, [statuses]);
+
+  // 5x5 고정 책상 배치 (25칸, 빈자리 포함)
+  const desks = useMemo(() => {
+    const arr: (Employee | null)[] = new Array(DESK_COUNT).fill(null);
+    active.slice(0, DESK_COUNT).forEach((e, i) => (arr[i] = e));
+    return arr;
+  }, [active]);
+
+  // 사무실에 있는 직원 중 몇 명을 "걸어다니는 캐릭터"로 선정
+  const walkerIds = useMemo(() => {
+    const inOffice = active.filter((e) => {
+      const st = statuses.get(e.id);
+      return !!st && (st.atOfficeAm || st.atOfficePm);
+    });
+    const chosen = inOffice.filter((_, i) => i === 1 || i === 4).slice(0, 2);
+    return new Set(chosen.map((e) => e.id));
+  }, [active, statuses]);
 
   if (loading) return <Spinner />;
   if (error) {
@@ -198,63 +232,118 @@ return (
         </div>
         {/* 바닥 타일 */}
         <div
-          className="bg-[#d8d2c4]"
+          className="relative bg-[#d8d2c4]"
           style={{
             backgroundImage:
               "linear-gradient(rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.06) 1px, transparent 1px)",
             backgroundSize: "24px 24px",
           }}
         >
-          <div className="mx-auto max-w-6xl px-4 py-6">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {active.map((emp, i) => {
-                const st =
-                  statuses.get(emp.id) ?? statusOf(emp, schedules, dateStr);
-                const char = makeCharacter(i, emp.color);
-                const desk = makeDesk(emp.color);
+          {/* 걸어다니는 직원 */}
+          {[...walkerIds].map((id, wi) => {
+            const emp = active.find((e) => e.id === id);
+            if (!emp) return null;
+            const char = makeCharacter(active.indexOf(emp), emp.color);
+            const spot = WALKER_SPOTS[wi % WALKER_SPOTS.length];
+            const spotStyle: CSSProperties = {
+              animation: `${spot.dir} ${spot.dur}s linear ${spot.delay}s infinite`,
+            };
+            if (spot.pos === "top") spotStyle.top = spot.top;
+            else spotStyle.bottom = spot.bottom;
+            return (
+              <div key={id} className="office-walker" style={spotStyle}>
+                <div
+                  style={{
+                    transform: `scaleX(${spot.dir === "office-walk-r" ? 1 : -1})`,
+                  }}
+                >
+                  <div className="inner">
+                    <PixelSprite
+                      grid={char.grid}
+                      palette={char.palette}
+                      size={4}
+                      title={emp.name}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* 책상 5 x 5 */}
+          <div className="mx-auto w-full max-w-5xl px-4 pt-16 pb-16">
+            <div className="grid grid-cols-5 gap-2 sm:gap-4">
+              {desks.map((emp, i) => {
+                const st = emp
+                  ? statuses.get(emp.id) ?? statusOf(emp, schedules, dateStr)
+                  : null;
+                const atOffice = !!st && (st.atOfficeAm || st.atOfficePm);
+                const isWalker = !!emp && walkerIds.has(emp.id);
+                const showChar = atOffice && !isWalker;
+                const char = emp
+                  ? makeCharacter(active.indexOf(emp), emp.color)
+                  : null;
+                const deskColor = emp ? emp.color : "#a8a29e";
                 return (
                   <div
-                    key={emp.id}
-                    className="flex flex-col items-center rounded-xl border-2 border-zinc-200/80 bg-white/70 px-2 py-3 shadow-sm backdrop-blur-sm"
+                    key={i}
+                    className="flex flex-col items-center rounded-lg border border-zinc-300/70 bg-white/60 px-0.5 pt-2 pb-1.5 shadow-sm"
                   >
-                    <span
-                      className={`mb-2 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${STATUS_CLS[st.type]}`}
-                    >
-                      {STATUS_LABEL[st.type]}
-                    </span>
-
-                    {/* 책상 + 캐릭터 */}
-                    <div className="relative flex flex-col items-center">
-                      <div className="z-10 -mb-2">
-                        <PixelSprite
-                          grid={char.grid}
-                          palette={char.palette}
-                          size={4}
-                          title={emp.name}
-                          className="drop-shadow-sm"
-                        />
-                      </div>
-                      <PixelSprite
-                        grid={desk.grid}
-                        palette={desk.palette}
-                        size={4}
-                      />
-                    </div>
-
-                    {/* 이름 카드 */}
-                    <div className="mt-2 w-full border-t border-zinc-200 pt-2 text-center">
-                      <div className="flex items-center justify-center gap-1.5 text-sm font-bold text-zinc-800">
+                    {emp ? (
+                      <>
                         <span
-                          className="inline-block h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: emp.color }}
+                          className={`mb-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_CLS[st!.type]}`}
+                        >
+                          {STATUS_LABEL[st!.type]}
+                        </span>
+                        <div className="relative flex flex-col items-center">
+                          {showChar && char ? (
+                            <div className="z-10 -mb-1.5">
+                              <PixelSprite
+                                grid={char.grid}
+                                palette={char.palette}
+                                size={4}
+                                title={emp.name}
+                                className="drop-shadow-sm"
+                              />
+                            </div>
+                          ) : (
+                            <div className="h-[26px]" />
+                          )}
+                          <PixelSprite
+                            grid={makeDesk(deskColor).grid}
+                            palette={makeDesk(deskColor).palette}
+                            size={4}
+                            responsive
+                          />
+                        </div>
+                        <div className="mt-1 w-full border-t border-zinc-200 pt-1 text-center leading-tight">
+                          <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-zinc-800">
+                            <span
+                              className="inline-block h-2 w-2 shrink-0 rounded-full"
+                              style={{ backgroundColor: emp.color }}
+                            />
+                            <span className="truncate">{emp.name}</span>
+                          </div>
+                          <div className="mt-0.5 truncate text-[9px] text-zinc-400">
+                            {[emp.team, emp.position].filter(Boolean).join(" · ") ||
+                              "직원"}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex w-full flex-col items-center pt-3 pb-1">
+                        <PixelSprite
+                          grid={makeDesk("#a8a29e").grid}
+                          palette={makeDesk("#a8a29e").palette}
+                          size={4}
+                          responsive
                         />
-                        {emp.name}
+                        <div className="mt-1 text-[9px] text-zinc-400">
+                          빈자리
+                        </div>
                       </div>
-                      <div className="mt-0.5 truncate text-[11px] text-zinc-500">
-                        {[emp.team, emp.position].filter(Boolean).join(" · ") ||
-                          "직원"}
-                      </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}
@@ -262,13 +351,6 @@ return (
           </div>
         </div>
       </div>
-
-      {/* 비활성 직원 안내 */}
-      {inactive.length > 0 && (
-        <p className="text-xs text-zinc-400">
-          표시 제외 (비활성): {inactive.map((e) => e.name).join(", ")}
-        </p>
-      )}
     </div>
   );
 }
