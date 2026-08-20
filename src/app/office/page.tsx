@@ -1,21 +1,15 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState } from "react";
 import { useData } from "@/lib/DataContext";
 import type { Employee, Schedule, ScheduleType } from "@/lib/types";
 import { toDateInput, toDateOnly } from "@/lib/constants";
 import { Spinner } from "@/components/ui";
-import {
-  PixelSprite,
-  makeCharacter,
-  makeDesk,
-  buildPalette,
-  PLANT_GRID,
-  WINDOW_GRID,
-} from "@/components/pixels";
+import { makeCharacter, buildPalette, PLANT_GRID, WINDOW_GRID, PixelSprite } from "@/components/pixels";
+import { OfficeScene, type SceneChar } from "@/components/OfficeScene";
 
 // ─────────────────────────────────────────────────────────────
-// 날짜 기준 근태 상태 판정 (page.tsx 의 TYPE_OFFICE / OFFICE_PRIORITY 와 동일)
+// 날짜 기준 근태 상태 판정 (page.tsx 의 로직과 동일)
 // ─────────────────────────────────────────────────────────────
 const TYPE_OFFICE: Record<ScheduleType, { am: boolean; pm: boolean }> = {
   WORK: { am: true, pm: true },
@@ -73,7 +67,6 @@ function statusOf(
   return { type, atOfficeAm: o.am, atOfficePm: o.pm };
 }
 
-// 상태 → 라벨/색
 const STATUS_LABEL: Record<ScheduleType, string> = {
   WORK: "출근",
   LEAVE: "휴가·연차",
@@ -86,46 +79,12 @@ const STATUS_LABEL: Record<ScheduleType, string> = {
   REMOTE: "재택중",
   OTHER: "자리비움",
 };
-const STATUS_CLS: Record<ScheduleType, string> = {
-  WORK: "bg-sky-500 text-white",
-  LEAVE: "bg-rose-500 text-white",
-  ANNUAL: "bg-rose-500 text-white",
-  HALF: "bg-orange-500 text-white",
-  HALF_AM: "bg-orange-500 text-white",
-  HALF_PM: "bg-orange-500 text-white",
-  TRIP: "bg-violet-500 text-white",
-  FIELD: "bg-amber-500 text-white",
-  REMOTE: "bg-green-600 text-white",
-  OTHER: "bg-zinc-400 text-white",
-};
 
 const roomPalette = buildPalette("#3b82f6", "#4a3b3f");
-
-// 사무실 책상 수 (5 x 5)
-const DESK_ROWS = 5;
-const DESK_COLS = 5;
-const DESK_COUNT = DESK_ROWS * DESK_COLS;
-
-// 걸어다니는 캐릭터 동선 (위/아래 통로)
-interface WalkerSpot {
-  pos: "top" | "bottom";
-  top?: string;
-  bottom?: string;
-  dir: "office-walk-l" | "office-walk-r";
-  dur: number;
-  delay: number;
-}
-const WALKER_SPOTS: WalkerSpot[] = [
-  { pos: "top", top: "6px", dir: "office-walk-r", dur: 18, delay: 0 },
-  { pos: "top", top: "52px", dir: "office-walk-l", dur: 22, delay: -9 },
-  { pos: "bottom", bottom: "6px", dir: "office-walk-l", dur: 20, delay: -12 },
-  { pos: "bottom", bottom: "52px", dir: "office-walk-r", dur: 24, delay: -5 },
-];
 
 export default function OfficePage() {
   const { employees, schedules, loading, error } = useData();
   const [selDate, setSelDate] = useState<string>(() => toDateInput(new Date()));
-
   const dateStr = toDateOnly(new Date(selDate));
 
   const active = useMemo(
@@ -139,14 +98,33 @@ export default function OfficePage() {
     return map;
   }, [active, schedules, dateStr]);
 
+  // 사무실에 있는 직원 (출근/오전·오후 출근 가능)
+  const present = useMemo((): SceneChar[] => {
+    return active
+      .map((e, i) => {
+        const st = statuses.get(e.id);
+        const atOffice = !!st && (st.atOfficeAm || st.atOfficePm);
+        return atOffice
+          ? { id: e.id, name: e.name, color: e.color, char: makeCharacter(i, e.color) }
+          : null;
+      })
+      .filter((x): x is SceneChar => x !== null);
+  }, [active, statuses]);
+
+  // 외근/출장 직원 (전화 이벤트용)
+  const outCall = useMemo((): SceneChar[] => {
+    return active
+      .map((e, i) => {
+        const st = statuses.get(e.id);
+        return st && (st.type === "FIELD" || st.type === "TRIP")
+          ? { id: e.id, name: e.name, color: e.color, char: makeCharacter(i, e.color) }
+          : null;
+      })
+      .filter((x): x is SceneChar => x !== null);
+  }, [active, statuses]);
+
   const counts = useMemo(() => {
-    const c: Record<string, number> = {
-      office: 0,
-      field: 0,
-      trip: 0,
-      remote: 0,
-      off: 0,
-    };
+    const c = { office: 0, field: 0, trip: 0, remote: 0, off: 0 };
     for (const st of statuses.values()) {
       if (st.atOfficePm || st.atOfficeAm) c.office += 1;
       else if (st.type === "FIELD") c.field += 1;
@@ -157,23 +135,6 @@ export default function OfficePage() {
     return c;
   }, [statuses]);
 
-  // 5x5 고정 책상 배치 (25칸, 빈자리 포함)
-  const desks = useMemo(() => {
-    const arr: (Employee | null)[] = new Array(DESK_COUNT).fill(null);
-    active.slice(0, DESK_COUNT).forEach((e, i) => (arr[i] = e));
-    return arr;
-  }, [active]);
-
-  // 사무실에 있는 직원 중 몇 명을 "걸어다니는 캐릭터"로 선정
-  const walkerIds = useMemo(() => {
-    const inOffice = active.filter((e) => {
-      const st = statuses.get(e.id);
-      return !!st && (st.atOfficeAm || st.atOfficePm);
-    });
-    const chosen = inOffice.filter((_, i) => i === 1 || i === 4).slice(0, 2);
-    return new Set(chosen.map((e) => e.id));
-  }, [active, statuses]);
-
   if (loading) return <Spinner />;
   if (error) {
     return (
@@ -182,14 +143,15 @@ export default function OfficePage() {
       </div>
     );
   }
-return (
+
+  return (
     <div className="space-y-4">
       {/* 상단 툴바 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-zinc-900">🏢 사무실</h1>
           <p className="text-sm text-zinc-500">
-            도트맵으로 보는 선택한 날짜의 사무실 출근 현황
+            도트 생활 시뮬레이션 — 선택한 날짜의 사무실
           </p>
         </div>
         <label className="flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm">
@@ -230,126 +192,26 @@ return (
           <PixelSprite grid={PLANT_GRID} palette={roomPalette} size={4} />
           <PixelSprite grid={WINDOW_GRID} palette={roomPalette} size={4} />
         </div>
-        {/* 바닥 타일 */}
-        <div
-          className="relative bg-[#d8d2c4]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.06) 1px, transparent 1px)",
-            backgroundSize: "24px 24px",
-          }}
-        >
-          {/* 걸어다니는 직원 */}
-          {[...walkerIds].map((id, wi) => {
-            const emp = active.find((e) => e.id === id);
-            if (!emp) return null;
-            const char = makeCharacter(active.indexOf(emp), emp.color);
-            const spot = WALKER_SPOTS[wi % WALKER_SPOTS.length];
-            const spotStyle: CSSProperties = {
-              animation: `${spot.dir} ${spot.dur}s linear ${spot.delay}s infinite`,
-            };
-            if (spot.pos === "top") spotStyle.top = spot.top;
-            else spotStyle.bottom = spot.bottom;
-            return (
-              <div key={id} className="office-walker" style={spotStyle}>
-                <div
-                  style={{
-                    transform: `scaleX(${spot.dir === "office-walk-r" ? 1 : -1})`,
-                  }}
-                >
-                  <div className="inner">
-                    <PixelSprite
-                      grid={char.grid}
-                      palette={char.palette}
-                      size={4}
-                      title={emp.name}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        {/* 바닥 + 시뮬레이션 */}
+        <OfficeScene present={present} out={outCall} />
+      </div>
 
-          {/* 책상 5 x 5 */}
-          <div className="mx-auto w-full max-w-5xl px-4 pt-16 pb-16">
-            <div className="grid grid-cols-5 gap-2 sm:gap-4">
-              {desks.map((emp, i) => {
-                const st = emp
-                  ? statuses.get(emp.id) ?? statusOf(emp, schedules, dateStr)
-                  : null;
-                const atOffice = !!st && (st.atOfficeAm || st.atOfficePm);
-                const isWalker = !!emp && walkerIds.has(emp.id);
-                const showChar = atOffice && !isWalker;
-                const char = emp
-                  ? makeCharacter(active.indexOf(emp), emp.color)
-                  : null;
-                const deskColor = emp ? emp.color : "#a8a29e";
-                return (
-                  <div
-                    key={i}
-                    className="flex flex-col items-center rounded-lg border border-zinc-300/70 bg-white/60 px-0.5 pt-2 pb-1.5 shadow-sm"
-                  >
-                    {emp ? (
-                      <>
-                        <span
-                          className={`mb-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_CLS[st!.type]}`}
-                        >
-                          {STATUS_LABEL[st!.type]}
-                        </span>
-                        <div className="relative flex flex-col items-center">
-                          {showChar && char ? (
-                            <div className="z-10 -mb-1.5">
-                              <PixelSprite
-                                grid={char.grid}
-                                palette={char.palette}
-                                size={4}
-                                title={emp.name}
-                                className="drop-shadow-sm"
-                              />
-                            </div>
-                          ) : (
-                            <div className="h-[26px]" />
-                          )}
-                          <PixelSprite
-                            grid={makeDesk(deskColor).grid}
-                            palette={makeDesk(deskColor).palette}
-                            size={4}
-                            responsive
-                          />
-                        </div>
-                        <div className="mt-1 w-full border-t border-zinc-200 pt-1 text-center leading-tight">
-                          <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-zinc-800">
-                            <span
-                              className="inline-block h-2 w-2 shrink-0 rounded-full"
-                              style={{ backgroundColor: emp.color }}
-                            />
-                            <span className="truncate">{emp.name}</span>
-                          </div>
-                          <div className="mt-0.5 truncate text-[9px] text-zinc-400">
-                            {[emp.team, emp.position].filter(Boolean).join(" · ") ||
-                              "직원"}
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex w-full flex-col items-center pt-3 pb-1">
-                        <PixelSprite
-                          grid={makeDesk("#a8a29e").grid}
-                          palette={makeDesk("#a8a29e").palette}
-                          size={4}
-                          responsive
-                        />
-                        <div className="mt-1 text-[9px] text-zinc-400">
-                          빈자리
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+      <p className="text-xs text-zinc-400">
+        💡 외근/출장 직원에게 전화가 걸려오면 사무실 안에서 받는 연출이 나옵니다.
+      </p>
+      <div className="flex flex-wrap gap-1.5 text-[11px]">
+        {present.map((p) => (
+          <span
+            key={p.id}
+            className="flex items-center gap-1 rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-zinc-600"
+          >
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ backgroundColor: p.color }}
+            />
+            {p.name}
+          </span>
+        ))}
       </div>
     </div>
   );

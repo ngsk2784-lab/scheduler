@@ -92,6 +92,14 @@ body {
   from { left: 105%; }
   to { left: -90px; }
 }
+/* 전화 오버레이 등장/퇴장 */
+.phone-overlay {
+  animation: phone-in 0.35s ease-out;
+}
+@keyframes phone-in {
+  from { opacity: 0; transform: translate(-50%, 8px) scale(0.9); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
 @media (prefers-reduced-motion: reduce) {
   .office-walker .inner { animation: none; }
   .office-walker { animation-duration: 99999s !important; }
