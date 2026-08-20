@@ -1,7 +1,7 @@
 # 🗓️ 회사 스케줄 + 보고 달력 — 핸드오프 (2026-08 업데이트)
 
 새 세션에서 이 프로젝트를 바로 이어서 작업할 수 있도록 정리한 최신 문서입니다.
-작업 폴더: `C:\Users\MSI\Desktop\scheduler\web`  ·  최신 커밋: `da0b1f0` (main, 원격과 동일)
+작업 폴더: `C:\Users\MSI\Desktop\scheduler\web`  ·  최신 커밋: `ad985e9` (main, 원격과 동일)
 
 > ⚠️ 2026-08 현재 **Railway가 서버 과부하 점검 중**일 수 있음 → 배포/재배포·URL 접속이 잠시 안 될 수 있음.
 > 점검 후 Railway 대시보드에서 `Deployments` 상태가 `Deployed` 인지 확인하고, 필요 시 Redeploy.
@@ -16,7 +16,7 @@
   1. 새 기능/변경이 생기면 나(agent)가 테스트용 항목을 `- [ ] **n-x** 내용` 형태로 작성
   2. 사용자가 실제 배포 URL에서 하나씩 테스트하고 `[ ]` → `[x]` 로 체크
   3. 체크된 파일을 다시 보내면 → 코드 수정/기능 추가 → "변경 이력"&새 항목을 체크리스트에 갱신 → 다시 제시 → 반복
-- 현재 진행 상황: **사무실 도트 시뮬레이션(`/office`) 1차 완성 → CHECKLIST.md 10번 섹션 테스트 대기 중.**
+- 현재 진행 상황: **사무실(`/office`)을 "출근부 기준 실시간 뷰"로 전환 완료 → CHECKLIST.md 전 섹션(1~8) 재테스트 대기 중.**
 
 새 세션에서 처음 할 일:
 1. 코드 최신화: `cd C:\Users\MSI\Desktop\scheduler\web` → `git pull`
@@ -47,7 +47,7 @@
 - [x] **인증/로그인**: 전화번호 + 비밀번호(4~16자, 영문/특수문자), 기존직원 자동가입, 세션 유지, **본인 정보만 본인 수정**, 관리자(전체) 권한 — `010-2645-3908` 을 관리자로 지정
 - [x] **슬랙 알림**: `@channel` 멘션 · 사무실 오전/오후/외부 인원 포함 · **매일 평일 8시(KST) 자동 발송**(`AUTO_NOTIFY_ON=on` 일 때)
 - [x] 모바일 UI 개선(테이블 가로스크롤, 헤더·툴바·모달·보고태그 배치)
-- [x] **사무실 도트 시뮬레이션 `/office`** — 3x3 책상(고정·넓게), 이름+직책 라벨, 기본은 책상 근무 + 이따금 이동/식사/대화(실생활 대사), 행동 후 책상 복귀
+- [x] **사무실 `/office`** — 3x3 책상, **출근부 기준 실시간 뷰**. 출근~퇴근 시간 사이에만 캐릭터 표시(자기 책상 착석, 책상 뒤 하반신 가림), 12:00~13:30은 책상에서 "🍚 식사중", 사무실 공실 시 형광등 꺼짐(어두움) 오버레이. 이동/식사코너/대화 연출은 제거됨
 
 ---
 
@@ -111,8 +111,8 @@ src/app/
   stats/page.tsx        # 통계(월간/연차잔여/알림/CSV)
   api/notify/route.ts   # 알림 발송(Slack @channel/사무실 인원, GET)
 components/ CalendarView, ScheduleModal, ReportModal, EmployeeModal, Header, ui
-             OfficeScene(사무실 시뮬레이션)/ pixels(도트 렌더러·스프라이트)
-src/app/office/page.tsx   # 사무실 페이지: 날짜 기준 상태→present/outCall 계산 후 OfficeScene에 전달
+             OfficeScene(사무실: 책상+착석 캐릭터 정적 렌더)/ pixels(도트 렌더러·스프라이트)
+src/app/office/page.tsx   # 사무실 페이지: 출근부(fetchAttendance) + 현재시각(30초 갱신) → 출근~퇴근 인원 계산, 공실 시 형광등 꺼짐
 lib/ DataContext(전역 데이터), AuthContext(인증), auth(핀/세션 헬퍼),
      supabase(API), types, constants, holidays, exportCsv, admin(PIN)
 supabase/ schema.sql, migrations.sql
@@ -121,7 +121,8 @@ supabase/ schema.sql, migrations.sql
 ---
 
 ## 6. 주요 로직 포인트 (수정 시 주의)
-- **사무실 시뮬레이션 `OfficeScene.tsx`**: 책상은 별도 레이어로 **고정**(캐릭터와 분리). 캐릭터 상태머신 `work→go→do(작업/식사/대화)→return→work`. **기본은 `work`(책상 근무)**, 이따금 이동(`EXTRA_SPOTS`)/간식(`EXTRA_SPOTS[0]`)/대화(실생활 `DIALOGUES` 대사, 2초마다 교체). `do` 종료 시 **반드시 `home`(자기 책상) 복귀**. 이동은 CSS transition(2.6s linear) + DOM ref(`nodeRef`/`innerRef`)로 직접 제어 → ⚠️ **React re-render가 위치를 되돌릴 수 있으니 JSX `style`에 `left/top`을 넣지 말 것**(ref로만 제어). 이름+직책은 캐릭터 위 라벨 상시 표시. 도트는 `pixels.tsx` `PixelSprite`(문자열 격자→SVG rect, `crispEdges`).
+- **사무실 `OfficeScene.tsx`**: **정적 렌더만** (상태머신/이동/대화/식사코너 없음). 3x3 책상은 고정 레이어(`z-index:10`), 캐릭터는 `z-index:5`로 **책상 뒤**에 배치해 하반신이 책상에 가려져 **착석**처럼 보임. 캐릭터 위치는 `charAtDesk(i)`(x=`COLS[c]`, y=`ROWS[r]+5`), 각 직원은 자기 책상 번호(상단 좌측부터)에 고정. 말풍선은 `lunch` prop이면 "🍚 식사중", 아니면 "💻 일하는중". 이름+직책 라벨 상시 표시. 도트는 `pixels.tsx` `PixelSprite`(격자→SVG rect, `crispEdges`).
+- **사무실 표시 로직(`office/page.tsx`)**: 더 이상 스케줄/날짜 비사용. `fetchAttendance(이번 달)` 로 출근부 로드 + `setInterval(30초)` 로 현재 시각 갱신 → 오늘 기록 중 상태가 `present/half/duty` 이고 **현재시각 ≥ 출근(time_in) 그리고 < 퇴근(time_out)** 이면 `present`(표시). 12:00~13:30(`LUNCH_AM/Pm`)은 `lunch=true`. `present.length===0`이면 `lightsOff` → 전체 오피스 어둡게(`bg-zinc-950/80`) + 안내문. 상단에 현재 날짜/시각(HH:MM:SS) 표시.
 - **오전/오후 사무실**: `page.tsx` 하단 `officeStaff()/TYPE_OFFICE/OFFICE_PRIORITY` — WORK만 둘 다, HALF_AM=오후만, HALF_PM=오전만, 휴가/외근/출장/재택=둘 다 X. 상태패널 기준일 `selectedDay ?? today`.
 - **업무 숨김**: `page.tsx` 이벤트 조합에서 `leaveByEmp`로 휴가/연차/반차 범위 지도 생성 → `WORK`가 겹치면 해당 업무 이벤트 제외.
 - **연차 차감(통계)**: `stats/page.tsx` `spanDays(start,end)` — 연차/휴가=일수, 반차=0.5. `annual_allowance` 실수형.
@@ -142,6 +143,7 @@ supabase/ schema.sql, migrations.sql
 ---
 
 ## 8. 다음 단계 / 확장(미정)
+- [ ] **사무실 출근부 기반 뷰 테스트**: CHECKLIST.md 1~8번 항목을 배포 URL에서 테스트 후 체크 → 수정/확정
 - Railway 점검 후: `Deployments → Deployed` 확인 → 자동 알림 다음날 아침 검증
 - (보류) 카톡 완전 자동 감시 / 보고 일괄 자동 등록 — git 이력 `a53534d`에 코드 잔존
 - 게스트용 열람, 관리자 대시보드, 보고 첨부(Storage), 진짜 서버강제 RLS(Auth uid) 등
