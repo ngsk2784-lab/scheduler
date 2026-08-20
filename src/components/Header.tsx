@@ -8,6 +8,7 @@ import { Modal, inputCls } from "@/components/ui";
 
 const NAV = [
   { href: "/", label: "📅 달력" },
+  { href: "/office", label: "🏢 사무실" },
   { href: "/reports", label: "📌 보고" },
   { href: "/attendance", label: "🗓️ 출근부" },
   { href: "/stats", label: "📊 통계" },
