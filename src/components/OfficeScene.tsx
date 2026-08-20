@@ -26,8 +26,8 @@ function deskSpot(i: number) {
 function charAtDesk(i: number) {
   const r = Math.floor(i / DESK_COLS);
   const c = i % DESK_COLS;
-  // 책상 위 자기 자리에 앉도록 발이 책상 표면에 닿게 배치 (떠 보이지 않게)
-  return { x: COLS[c], y: ROWS[r] + 2 };
+  // 착석: 발이 책상 표면보다 아래로 들어가 하반신이 책상 뒤에 가려져 앉은 모습
+  return { x: COLS[c], y: ROWS[r] + 5 };
 }
 
 export function OfficeScene({
@@ -57,7 +57,7 @@ export function OfficeScene({
           <div
             key={`desk-${i}`}
             className="absolute -translate-x-1/2"
-            style={{ left: `${d.x}%`, top: `${d.y}%` }}
+            style={{ left: `${d.x}%`, top: `${d.y}%`, zIndex: 10 }}
           >
             <PixelSprite
               grid={makeDesk("#b8a68a").grid}
@@ -76,7 +76,7 @@ export function OfficeScene({
           <div
             key={c.id}
             className="absolute -translate-x-1/2 -translate-y-full"
-            style={{ left: `${sp.x}%`, top: `${sp.y}%`, zIndex: 20 }}
+            style={{ left: `${sp.x}%`, top: `${sp.y}%`, zIndex: 5 }}
           >
             <div className="relative" style={{ width: 64, height: 72 }}>
               {/* 이름 + 직책 라벨 */}
