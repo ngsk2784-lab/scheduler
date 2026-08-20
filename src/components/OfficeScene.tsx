@@ -26,7 +26,8 @@ function deskSpot(i: number) {
 function charAtDesk(i: number) {
   const r = Math.floor(i / DESK_COLS);
   const c = i % DESK_COLS;
-  return { x: COLS[c], y: ROWS[r] - 16 };
+  // 책상 위 자기 자리에 앉도록 발이 책상 표면에 닿게 배치 (떠 보이지 않게)
+  return { x: COLS[c], y: ROWS[r] + 2 };
 }
 
 export function OfficeScene({
