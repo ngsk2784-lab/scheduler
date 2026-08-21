@@ -171,7 +171,7 @@ export default function AttendancePage() {
       </div>
 
       <section className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <table className="w-full min-w-[720px]! text-left text-sm">
+        <table className="w-full min-w-[800px]! text-left text-sm">
           <thead className="border-b border-zinc-100 bg-zinc-50 text-xs text-zinc-500">
             <tr>
               <th className="whitespace-nowrap px-3 py-2 font-semibold">직원</th>
@@ -192,20 +192,20 @@ export default function AttendancePage() {
                     <span className="font-medium">{emp.name}</span>
                     <span className="ml-1 text-xs text-zinc-400">{emp.branch ?? ""}</span>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="whitespace-nowrap px-3 py-2 min-w-[88px]">
                     <select className={inputCls} value={d.status as string} onChange={(e) => setDraft(emp.id, { status: e.target.value as AttendanceStatus })}>
                       {(Object.keys(STATUS_LABELS) as AttendanceStatus[]).map((s) => (
                         <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                       ))}
                     </select>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="whitespace-nowrap px-3 py-2 min-w-[92px]">
                     <input type="time" className={inputCls} value={(d.time_in as string) ?? ""} onChange={(e) => setDraft(emp.id, { time_in: e.target.value })} />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="whitespace-nowrap px-3 py-2 min-w-[92px]">
                     <input type="time" className={inputCls} value={(d.time_out as string) ?? ""} onChange={(e) => setDraft(emp.id, { time_out: e.target.value })} />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="whitespace-nowrap px-3 py-2 min-w-[150px]">
                     <input className={inputCls} value={(d.note as string) ?? ""} onChange={(e) => setDraft(emp.id, { note: e.target.value })} placeholder="메모" />
                   </td>
                   <td className="px-3 py-2 text-right">

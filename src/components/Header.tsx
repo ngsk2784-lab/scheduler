@@ -49,7 +49,7 @@ export function Header() {
               🗓️
             </span>
             <div className="min-w-0 leading-tight">
-              <div className="truncate text-sm font-bold text-zinc-900">회사 스케줄 달력</div>
+              <div className="hidden truncate text-sm font-bold text-zinc-900 sm:block">회사 스케줄 달력</div>
               <div className="hidden text-[11px] text-zinc-400 sm:block">사내 전용</div>
             </div>
           </div>
