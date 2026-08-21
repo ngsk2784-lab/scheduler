@@ -88,19 +88,19 @@ export default function EmployeesPage() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
-          <table className="w-full text-left text-sm">
+          <table className="w-full min-w-[560px]! text-left text-sm">
             <thead className="border-b border-zinc-100 bg-zinc-50 text-xs text-zinc-500">
               <tr>
-                <th className="px-4 py-3 font-semibold">직원</th>
-                <th className="px-4 py-3 font-semibold">지점/부서</th>
-                <th className="hidden px-4 py-3 font-semibold sm:table-cell">
+                <th className="whitespace-nowrap px-4 py-3 font-semibold">직원</th>
+                <th className="whitespace-nowrap px-4 py-3 font-semibold">지점/부서</th>
+                <th className="hidden whitespace-nowrap px-4 py-3 font-semibold sm:table-cell">
                   팀/직급
                 </th>
-                <th className="hidden px-4 py-3 font-semibold md:table-cell">
+                <th className="hidden whitespace-nowrap px-4 py-3 font-semibold md:table-cell">
                   연락처
                 </th>
-                <th className="px-4 py-3 font-semibold">상태</th>
-                <th className="px-4 py-3 text-right font-semibold">관리</th>
+                <th className="whitespace-nowrap px-4 py-3 font-semibold">상태</th>
+                <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
@@ -136,16 +136,16 @@ export default function EmployeesPage() {
                   </td>
                   <td className="px-4 py-3">
                     {e.is_active ? (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                      <span className="whitespace-nowrap rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
                         재직
                       </span>
                     ) : (
-                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-500">
+                      <span className="whitespace-nowrap rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-500">
                         퇴사
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
                     {(isAdmin || e.id === user?.id) && (
                       <button
                         onClick={() => setModal({ open: true, employee: e })}

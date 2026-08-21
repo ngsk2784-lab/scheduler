@@ -146,16 +146,16 @@ export default function StatsPage() {
       </section>
 
       <section className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-[720px]! text-left text-sm">
           <thead className="border-b border-zinc-100 bg-zinc-50 text-xs text-zinc-500">
             <tr>
-              <th className="px-3 py-2 font-semibold">직원</th>
-              <th className="px-3 py-2 font-semibold">휴가/연차</th>
-              <th className="px-3 py-2 font-semibold">반차</th>
-              <th className="px-3 py-2 font-semibold">출장/외근</th>
-              <th className="px-3 py-2 font-semibold">재택</th>
-              <th className="px-3 py-2 font-semibold">보고</th>
-              <th className="px-3 py-2 font-semibold">연차(사용/잔여)</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">직원</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">휴가/연차</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">반차</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">출장/외근</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">재택</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">보고</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">연차(사용/잔여)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
@@ -164,7 +164,7 @@ export default function StatsPage() {
               const remain = p.allowance == null ? null : p.allowance - p.usedAnnual;
               return (
                 <tr key={p.emp.id} className="hover:bg-zinc-50/60">
-                  <td className="px-3 py-2">
+                  <td className="whitespace-nowrap px-3 py-2">
                     <div className="flex items-center gap-2">
                       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.emp.color }} />
                       <span className="font-medium text-zinc-800">{p.emp.name}</span>

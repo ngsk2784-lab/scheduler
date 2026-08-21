@@ -171,15 +171,15 @@ export default function AttendancePage() {
       </div>
 
       <section className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <table className="w-full min-w-[560px] text-left text-sm">
+        <table className="w-full min-w-[720px]! text-left text-sm">
           <thead className="border-b border-zinc-100 bg-zinc-50 text-xs text-zinc-500">
             <tr>
-              <th className="px-3 py-2 font-semibold">직원</th>
-              <th className="px-3 py-2 font-semibold">상태</th>
-              <th className="px-3 py-2 font-semibold">출근</th>
-              <th className="px-3 py-2 font-semibold">퇴근</th>
-              <th className="px-3 py-2 font-semibold">메모</th>
-              <th className="px-3 py-2 font-semibold">저장</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">직원</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">상태</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">출근</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">퇴근</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">메모</th>
+              <th className="whitespace-nowrap px-3 py-2 font-semibold">저장</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
@@ -187,7 +187,7 @@ export default function AttendancePage() {
               const d = draftFor(emp.id);
               return (
                 <tr key={emp.id} className="hover:bg-zinc-50/60">
-                  <td className="px-3 py-2">
+                  <td className="whitespace-nowrap px-3 py-2">
                     <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: emp.color }} />
                     <span className="font-medium">{emp.name}</span>
                     <span className="ml-1 text-xs text-zinc-400">{emp.branch ?? ""}</span>
